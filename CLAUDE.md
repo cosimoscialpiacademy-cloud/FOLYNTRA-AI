@@ -13,3 +13,10 @@ Sei incaricato di costruire, testare e mantenere un prodotto reale in questo rep
 - Export impaginazione deve usare **page count effettivo** per creare il dorso; nessun file illusoriamente 'ready' se non passa QA.
 - Dopo ogni fase, aggiornare README con stato funzionante, costi/limiti, istruzioni rapide e prossimi passaggi.
 - Cost tracker e cap di spesa di default; mock non consuma API e non finge output commerciali.
+
+## Comandi e struttura (aggiornato alla Fase A)
+
+- Verifica completa: `npm run typecheck && npm run lint && npm test && npm run build`; poi `npm start` e `npm run e2e` (richiede Chrome/Chromium, `CHROMIUM_EXECUTABLE_PATH` se non è in un percorso standard).
+- Logica pura in `src/lib` (niche, kdp, ai, book, export, store); pagine in `src/app/(app)`; schede del progetto in `src/components/project`.
+- Il mock AI deve restare dichiarato: il testo che produce contiene il marcatore `TESTO DEMO (mock)` e il QA lo tratta come blocco critico.
+- Dopo ogni fase aggiornare `README.md` e `REPORT-STATO.md` con ciò che è stato davvero eseguito.

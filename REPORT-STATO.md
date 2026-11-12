@@ -1,0 +1,108 @@
+# REPORT DI STATO — FOLYNTRA AI
+
+**Data:** 12 novembre 2026 · **Repository:** `cosimoscialpiacademy-cloud/FOLYNTRA-AI` · **Branch:** `claude/happy-einstein-upmneo`
+
+**Sintesi:** la Fase A è implementata e verificata end-to-end in modalità DEMO locale. Tre cose non sono state verificate perché mancano risorse esterne: AI Anthropic reale (nessuna chiave), Supabase (nessun progetto dedicato), deploy Netlify. **Il prodotto non è "completo al 100%".**
+
+## Comandi eseguiti e risultati
+
+| Comando | Esito |
+|---|---|
+| `npm install` | ok, `npm audit --omit=dev`: 0 vulnerabilità |
+| `npm run typecheck` | 0 errori |
+| `npm run lint` | 0 errori, 0 avvisi |
+| `npm test` | 36/36 test in 5 file |
+| `npm run build` | compilato; 5 pagine e 3 route API |
+| `npm run e2e` (su `npm start`) | 16/16 passi, 0 errori in console |
+
+## Percorso DEMO dimostrato (E2E automatico nel browser)
+
+Progetto «Manuale pratico di manutenzione domestica di base», mercato Italia.
+
+1. Accesso in modalità demo locale, con badge "MODALITÀ DEMO LOCALE" e "AI: mock dichiarato".
+2. Nicchie DEMO caricate ed etichettate, affidabilità 0%.
+3. CSV malformato: errori per riga comprensibili, nessun dato esistente alterato. CSV valido: nicchia importata con fonte e data.
+4. Confronto affiancato di due nicchie.
+5. Nicchia selezionata (con accettazione del rischio) → progetto con pubblico, keyword e categoria già nel brief.
+6. Titolo con 5 alternative e concept.
+7. Indice di 5 capitoli, modificato e identico dopo il ricaricamento della pagina.
+8. 2 capitoli generati in job separati, presenti dopo il ricaricamento, marcati "TESTO DEMO (mock)".
+9. Editor: modifica salvata, versione in cronologia; il capitolo mock non può essere marcato "rivisto".
+10. Copertina: 3 proposte, template scelto; PDF interno di 11 pagine; dorso calcolato dalle pagine reali.
+11. Export ZIP: scaricato, stato **BOZZA** (corretto: contiene testo mock), stati di pubblicazione bloccati.
+12. Checksum SHA-256 del manifest ricalcolati e coincidenti per tutti i file.
+13. Dashboard aggiornata; iPhone 390 px senza scorrimento orizzontale su 4 pagine e 5 schede.
+
+### File prodotti nello ZIP (`…-kdp-kit-BOZZA.zip`, 17 pagine)
+
+| File | Byte |
+|---|---|
+| `manuscript.pdf` | 111 574 |
+| `cover-print.pdf` | 60 613 |
+| `cover-ebook.jpg` (1600 × 2560) | 480 470 |
+| `ebook.epub` | 434 982 |
+| `editable.docx` | 11 261 |
+| `bonus/quaderno-operativo.pdf` | 62 605 |
+| `metadata.json` · `metadata.csv` | 2 352 · 859 |
+| `description.html` | 85 |
+| `royalty-simulation.json` | 1 032 |
+| `ai-disclosure.json` | 1 495 |
+| `diritti.md` | 597 |
+| `kdp-checklist.md` | 3 156 |
+| `guida-caricamento-kdp.md` | 1 020 |
+| `qa-report.md` · `qa-report.json` | 8 669 · 15 260 |
+| `manifest.json` | SHA-256 di tutti i file |
+
+### Controlli QA su quell'export
+
+- **20 superati**, tra cui: formato pagina 6 × 9 in uniforme, font tutti incorporati (interno e copertina), copertina dimensionata dal numero di pagine reale, JPEG 1600 × 2560, struttura EPUB, struttura DOCX, dichiarazione IA coerente.
+- **8 falliti, come previsto in demo:** meno di 5 capitoli con testo, testo mock presente, paragrafi duplicati (avviso), capitoli non rivisti, conferma di revisione mancante, metadati con segnaposto/categoria DEMO, diritti non confermati, meno di 24 pagine.
+- **3 non eseguiti e dichiarati:** epubcheck, KDP Previewer, copia di prova.
+
+Un secondo test (`tests/export.test.ts`) esporta un libro con testo rivisto e conferme complete: 43 pagine, **tutti i controlli critici superati, stato "pronto"**. Verificato anche con strumenti esterni: `pdfinfo` (43 pagine, 432 × 648 pt), `pdffonts` (tutti i font `emb yes`), copertina 889,92 × 666 pt = 12,36 × 9,25 in, coerente con il dorso di 43 pagine su carta crema.
+
+## Cosa funziona oggi
+
+- Dashboard con soli numeri reali (progetti, capitoli, parole, export, spesa AI, attività).
+- Niche Intelligence: brainstorming di ipotesi, import CSV (segnali o concorrenti), DEMO etichettata, formula di `docs/03`, affidabilità separata, rischi, concorrenti manuali con stima dichiarata, confronto, scenari economici ipotetici.
+- Book Architect: brief dalla nicchia, titolo + 5 alternative, sinossi, pagine iniziali/finali, fonti verificabili, glossario, indice modificabile con blocco capitoli.
+- Book Writer: job per capitolo, salvataggio progressivo, ripresa dopo interruzione, retry, idempotenza, budget, token e costi, cronologia versioni, controlli (segnaposto, fonti mancanti, duplicati, indice, ricette), revisione AI.
+- Cover & Interior: 3 template originali, palette, font, testi; PDF interno paginato; anteprima fronte e copertina completa con guide.
+- KDP Kit: ZIP, QA che blocca lo stato "pronto", stati di pubblicazione dichiarati dall'utente.
+- Backup/ripristino JSON dei dati, PWA installabile con pagina offline.
+
+## Cosa NON è stato verificato
+
+| Area | Stato | Cosa serve |
+|---|---|---|
+| **AI Anthropic reale** | Codice scritto (SDK ufficiale, streaming, output strutturati, limiti di costo) e compilato, **mai eseguito contro l'API**. I "2 capitoli reali + export valido" della definizione di finito **non sono stati fatti**. | Chiave API Anthropic con credito e il tuo consenso alla spesa |
+| **Supabase** | Adapter e schema scritti, **mai eseguiti** su un database. Nel tuo account esistono solo progetti di altri prodotti, che non ho toccato. Il test "utente A non vede i dati di B" non è stato eseguito. | Un progetto Supabase nuovo dedicato a FOLYNTRA |
+| **Deploy Netlify** | `netlify.toml` presente, **nessun deploy**. Le Netlify Functions non includono Chromium: PDF e copertine richiedono un host Node con Chrome o un worker esterno. | Decisione sull'hosting |
+| **epubcheck** | Non eseguito: l'esecuzione dello strumento scaricato è stata negata in questo ambiente. L'EPUB ha solo la verifica strutturale interna. L'app lo esegue da sola se imposti `EPUBCHECK_JAR`. | Java + epubcheck sul server, oppure Kindle Previewer |
+| **KDP Previewer** | Non eseguibile da software: è un passaggio manuale. | Caricamento di prova sul tuo account |
+
+## Scostamenti dalle specifiche
+
+- **API**: `docs/04` elenca endpoint REST con accesso al database lato server. Ho realizzato tre route di solo calcolo (`/api/ai`, `/api/export`, `/api/status`); i dati vengono letti e scritti dal client nell'archivio dell'utente (IndexedDB oppure Supabase con RLS). Motivo: far funzionare lo stesso flusso senza database. Conseguenza: i job sono persistenti e riprendibili ma guidati dal browser, non da un worker; se chiudi la pagina la generazione si ferma e si riprende alla riapertura.
+- **Budget**: il server rifiuta le richieste che supererebbero il tetto, ma la spesa già sostenuta gli viene comunicata dal client. È adeguato all'uso personale della Fase A, non a un servizio multiutente.
+- **Schema SQL**: corretto un errore di sintassi nello starter (`+` al posto di `||` nel blocco delle policy) e aggiunte in modo additivo due tabelle (`chapter_revisions`, `activity_log`) e alcune colonne; rimosso il vincolo unico su `(book_id, position)` che impediva il riordino dei capitoli.
+- **Limite di frequenza**: in memoria per istanza, non distribuito.
+- **Costi di stampa in euro**: non ho trovato la tabella ufficiale per Amazon.it; i valori sono marcati "indicativi" in interfaccia e nei file. Quelli in dollari e sterline corrispondono alla documentazione KDP consultata.
+- **Test 9 e 11 di `docs/06`**: il bonus PDF è incluso (quaderno operativo derivato dall'indice); l'Ads planner con import CSV **non** è implementato (Fase B).
+
+## Cosa resta da fare
+
+- **Subito, con le tue credenziali:** prova reale con Anthropic; progetto Supabase e test RLS con due utenti; scelta dell'hosting e deploy verificato.
+- **Fase A, rifiniture:** immagini caricate dall'utente in copertina; trascinamento per riordinare i capitoli (oggi frecce su/giù); annulla/ripeti nell'editor oltre alla cronologia.
+- **Fase B:** adapter Keepa, import trend, report vendite KDP, Ads planner (ACOS, ROAS, break-even), A+ content, pagina autore, email e post di lancio, altri bonus.
+- **Fase C:** Amazon Ads API dopo approvazione, abbonamenti e team, traduzioni, illustrazioni, fiction.
+
+## API con costo potenziale
+
+- **Anthropic**: a consumo. Indicativamente un libro di 20 000 parole richiede circa 60–80 mila token in uscita: meno di 2 $ con Opus 5.5, meno di 1 $ con Sonnet 5.5, pochi centesimi con Haiku 5.5. Stima non misurata. Tetto predefinito 20 $ per libro.
+- **Supabase**: il piano gratuito basta per l'uso personale, ma ha un numero limitato di progetti attivi.
+- **Keepa, Amazon Ads**: non usate; nessuna chiamata viene effettuata.
+
+## Prima azione per te
+
+Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso demo. Poi dimmi quale delle tre verifiche mancanti vuoi sbloccare per prima: chiave Anthropic, progetto Supabase nuovo, oppure hosting.

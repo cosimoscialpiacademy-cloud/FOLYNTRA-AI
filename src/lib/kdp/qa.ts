@@ -2,7 +2,7 @@
  * QA del pacchetto KDP. "KDP pronto" richiede che TUTTI i controlli critici
  * siano 'ok': un controllo critico fallito o non eseguito blocca lo stato.
  */
-import { analyzeManuscript, type TextIssue } from '../book/analysis';
+import { analyzeManuscript, containsMockText, type TextIssue } from '../book/analysis';
 import type { PdfReport } from '../export/pdf-inspect';
 import type { BookBundle, QaCheck } from '../types';
 import { wordCount } from '../utils';
@@ -57,6 +57,9 @@ export function runQa(input: QaInput): { checks: QaCheck[]; kdpReady: boolean; i
   add('meta.keyword.min', 'Almeno una parola chiave, massimo 7', 'critico', kw.length >= 1 && kw.length <= 7, `${kw.length} parole chiave.`);
   const cats = project.kdp.categories.filter((c) => c.trim());
   add('meta.categorie', 'Da 1 a 3 categorie', 'critico', cats.length >= 1 && cats.length <= 3, `${cats.length} categorie.`);
+  const metaText = [project.title, project.subtitle, desc, ...kw, ...cats, project.cover.title, project.cover.subtitle, project.cover.backText, project.cover.tagline, project.matter.preface, project.matter.conclusion].join(' ');
+  const metaDemo = containsMockText(metaText) || /\(DEMO\)|fittizia/i.test(cats.join(' '));
+  add('meta.demo', 'Nessun testo DEMO/mock in metadati, copertina e pagine iniziali', 'critico', !metaDemo, metaDemo ? 'Descrizione, categorie o copertina contengono ancora testo segnaposto o categorie DEMO.' : 'Nessun segnaposto nei metadati.');
   const anyAi = chapters.some((c) => c.aiGenerated);
   add('ia.dichiarazione', 'Dichiarazione IA coerente con il contenuto', 'critico', !(anyAi && project.kdp.aiText === 'none'),
     anyAi && project.kdp.aiText === 'none' ? 'Ci sono capitoli generati da IA ma la dichiarazione indica "nessun testo IA".' : `Testo: ${project.kdp.aiText}; immagini: ${project.kdp.aiImages}; traduzioni: ${project.kdp.aiTranslation}.`);
