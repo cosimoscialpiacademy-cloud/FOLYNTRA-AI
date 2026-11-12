@@ -1,0 +1,265 @@
+/** Tipi di dominio FOLYNTRA AI (Fase A). */
+
+export type Marketplace = 'amazon.it' | 'amazon.com' | 'amazon.co.uk' | 'amazon.de' | 'amazon.fr' | 'amazon.es';
+export type Currency = 'EUR' | 'USD' | 'GBP';
+
+/** Provenienza di ogni dato di mercato (docs/03). */
+export type EvidenceStatus = 'observed' | 'estimated' | 'imported' | 'demo' | 'missing';
+
+export interface Metric {
+  value: number | null;
+  unit: string;
+  status: EvidenceStatus;
+  source: string;
+  observedAt: string | null;
+  sampleSize?: number;
+  methodology?: string;
+}
+
+export type SignalKey = 'demand' | 'competition' | 'trend' | 'unitEconomics' | 'differentiation';
+
+export interface Competitor {
+  title: string;
+  asin?: string;
+  price?: number;
+  reviews?: number;
+  rating?: number;
+  bsr?: number;
+  pages?: number;
+  publishedAt?: string;
+  /** I competitor non verificati dall'utente restano marcati come tali. */
+  verified: boolean;
+}
+
+export interface Niche {
+  id: string;
+  keyword: string;
+  buyerPersona: string;
+  marketplace: Marketplace;
+  category: string;
+  status: 'hypothesis' | 'researched' | 'selected';
+  /** true quando TUTTI i dati sono sintetici di dimostrazione. */
+  demoOnly: boolean;
+  signals: Record<SignalKey, Metric>;
+  competitors: Competitor[];
+  secondaryKeywords: string[];
+  differentiationIdeas: string[];
+  risks: string[];
+  commentary: string;
+  /** Rischio accettato esplicitamente dall'utente al momento della selezione. */
+  riskAccepted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type BookKind = 'nonfiction' | 'workbook' | 'cookbook';
+export type ProjectStatus = 'draft' | 'research' | 'writing' | 'review' | 'export_ready' | 'published_by_user';
+export type PublishState = 'non_pronto' | 'pacchetto_pronto' | 'inviato_dall_utente' | 'pubblicato_e_verificato';
+
+export interface Brief {
+  audience: string;
+  problem: string;
+  goal: string;
+  uniqueValue: string;
+  exclusions: string;
+  style: string;
+  synopsis: string;
+}
+
+export interface SourceRef {
+  id: string;
+  citation: string;
+  url: string;
+  /** Solo l'utente può confermare una fonte: l'AI non la marca mai verificata. */
+  verified: boolean;
+}
+
+export interface GlossaryEntry {
+  term: string;
+  definition: string;
+}
+
+export type TrimSizeId = '5x8' | '5.5x8.5' | '6x9' | '7x10' | '8.5x11';
+export type PaperType = 'white' | 'cream';
+export type BodyFont = 'EB Garamond' | 'Inter';
+
+export interface LayoutSettings {
+  trim: TrimSizeId;
+  paper: PaperType;
+  bleed: boolean;
+  bodyFont: BodyFont;
+  fontSizePt: number;
+  lineHeight: number;
+  runningHeaders: boolean;
+  /** Avviso al lettore sull'uso dell'IA (facoltativo, distinto dalla dichiarazione KDP). */
+  readerAiNotice: boolean;
+}
+
+export type CoverTemplateId = 'classico' | 'moderno' | 'editoriale';
+
+export interface CoverSpec {
+  template: CoverTemplateId;
+  palette: { background: string; accent: string; text: string };
+  titleFont: 'Playfair Display' | 'Oswald' | 'EB Garamond';
+  title: string;
+  subtitle: string;
+  author: string;
+  tagline: string;
+  backText: string;
+  seed: number;
+}
+
+export interface KdpMeta {
+  description: string;
+  keywords: string[];
+  categories: string[];
+  listPricePaperback: number;
+  listPriceEbook: number;
+  aiText: 'none' | 'assisted' | 'generated';
+  aiImages: 'none' | 'assisted' | 'generated';
+  aiTranslation: 'none' | 'assisted' | 'generated';
+  rightsConfirmed: boolean;
+  humanReviewConfirmed: boolean;
+  publishState: PublishState;
+}
+
+export interface Matter {
+  dedication: string;
+  preface: string;
+  conclusion: string;
+  acknowledgments: string;
+  authorBio: string;
+}
+
+export interface Project {
+  id: string;
+  nicheId: string | null;
+  name: string;
+  marketplace: Marketplace;
+  locale: string;
+  status: ProjectStatus;
+  kind: BookKind;
+  title: string;
+  subtitle: string;
+  altTitles: string[];
+  author: string;
+  brief: Brief;
+  targetWords: number;
+  matter: Matter;
+  glossary: GlossaryEntry[];
+  sources: SourceRef[];
+  layout: LayoutSettings;
+  cover: CoverSpec;
+  kdp: KdpMeta;
+  /** Tetto di spesa AI per questo libro, in USD. */
+  budgetUsd: number;
+  /** Pagine effettive dell'ultimo PDF interno renderizzato (null = mai renderizzato). */
+  pageCount: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ChapterStatus = 'draft' | 'generating' | 'generated' | 'reviewed' | 'locked';
+
+export interface Chapter {
+  id: string;
+  projectId: string;
+  position: number;
+  title: string;
+  summary: string;
+  sections: string[];
+  targetWords: number;
+  content: string;
+  status: ChapterStatus;
+  /** Chi ha prodotto il testo corrente. 'mock' non è mai contenuto pubblicabile. */
+  generatedBy: 'none' | 'mock' | 'anthropic' | 'human';
+  aiGenerated: boolean;
+  updatedAt: string;
+}
+
+export interface ChapterRevision {
+  id: string;
+  projectId: string;
+  chapterId: string;
+  content: string;
+  words: number;
+  reason: 'generazione' | 'salvataggio' | 'ripristino';
+  createdAt: string;
+}
+
+export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+
+export interface Job {
+  id: string;
+  projectId: string;
+  chapterId: string | null;
+  jobType: 'chapter' | 'outline' | 'titles' | 'brainstorm' | 'review' | 'export';
+  status: JobStatus;
+  progress: number;
+  idempotencyKey: string;
+  attempts: number;
+  errorPublic: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CostEvent {
+  id: string;
+  projectId: string | null;
+  provider: 'anthropic' | 'mock';
+  model: string;
+  activity: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+  recordedAt: string;
+}
+
+export interface ExportFile {
+  name: string;
+  bytes: number;
+  sha256: string;
+}
+
+export interface QaCheck {
+  id: string;
+  label: string;
+  severity: 'critico' | 'avviso' | 'info';
+  result: 'ok' | 'fallito' | 'non_eseguito';
+  detail: string;
+}
+
+export interface ExportRecord {
+  id: string;
+  projectId: string;
+  createdAt: string;
+  pageCount: number;
+  kdpReady: boolean;
+  files: ExportFile[];
+  checks: QaCheck[];
+}
+
+export interface Activity {
+  id: string;
+  projectId: string | null;
+  message: string;
+  createdAt: string;
+}
+
+export interface CollectionMap {
+  niches: Niche;
+  projects: Project;
+  chapters: Chapter;
+  revisions: ChapterRevision;
+  jobs: Job;
+  costs: CostEvent;
+  exports: ExportRecord;
+  activity: Activity;
+}
+export type CollectionName = keyof CollectionMap;
+
+/** Pacchetto inviato alle route di export: tutto ciò che serve per impaginare. */
+export interface BookBundle {
+  project: Project;
+  chapters: Chapter[];
+}

@@ -1,0 +1,10 @@
+# Deploy Netlify (NON ancora verificato: vedi REPORT-STATO.md).
+# Il rendering PDF richiede un Chromium: su Netlify Functions non è incluso.
+# Impostare CHROMIUM_EXECUTABLE_PATH su un worker che lo fornisce, oppure
+# eseguire l'app su un host Node con Chrome/Chromium installato.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
