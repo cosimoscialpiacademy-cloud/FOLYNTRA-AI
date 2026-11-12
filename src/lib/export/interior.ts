@@ -77,8 +77,9 @@ export function buildSections(bundle: BookBundle, year: number): Section[] {
   }
   const back = (id: string, title: string, html: string) => out.push({ id, title, kind: 'back', bare: false, header: title, html: `<h1 class="section-title">${e(title)}</h1>${html}` });
   if (project.matter.conclusion.trim()) back('conclusione', 'Conclusione', markdownToXhtml(project.matter.conclusion));
-  if (project.glossary.length) {
-    back('glossario', 'Glossario', `<dl>${[...project.glossary].sort((a, b) => a.term.localeCompare(b.term, 'it')).map((g) => `<dt>${e(g.term)}</dt><dd>${e(g.definition)}</dd>`).join('')}</dl>`);
+  const glossary = project.glossary.filter((g) => g.term.trim() && g.definition.trim());
+  if (glossary.length) {
+    back('glossario', 'Glossario', `<dl>${[...glossary].sort((a, b) => a.term.localeCompare(b.term, 'it')).map((g) => `<dt>${e(g.term)}</dt><dd>${e(g.definition)}</dd>`).join('')}</dl>`);
   }
   const verified = project.sources.filter((s) => s.verified && s.citation.trim());
   if (verified.length) back('bibliografia', 'Bibliografia', `<ul class="biblio">${verified.map((s) => `<li>${e(s.citation)}${s.url ? ` <span class="url">${e(s.url)}</span>` : ''}</li>`).join('')}</ul>`);

@@ -8,6 +8,13 @@ import type { Chapter, Project } from '../types';
 import { wordCount } from '../utils';
 
 export const MOCK_MARKER = 'TESTO DEMO (mock)';
+const MOCK_FILLER_RE = /è un segnaposto del capitolo|segnaposto dell’elenco|Esercizio segnaposto/;
+
+/** Vero se nel testo resta materiale prodotto dal mock. */
+export function containsMockText(content: string): boolean {
+  return content.includes(MOCK_MARKER) || MOCK_FILLER_RE.test(content);
+}
+
 export const MISSING_SOURCE_RE = /\[(FONTE (MANCANTE|DA VERIFICARE)[^\]]*)\]/gi;
 const PLACEHOLDER_RE = /\[(TODO|DA COMPLETARE|INSERIRE|PLACEHOLDER|XXX|TBD)[^\]]*\]|lorem ipsum|\bTODO\b|\bTBD\b/gi;
 
@@ -61,9 +68,9 @@ export function findDuplicates(chapters: Chapter[]): TextIssue[] {
 /** Ricette: ogni ingrediente elencato dovrebbe comparire nel procedimento. */
 export function checkRecipeConsistency(chapter: Chapter): TextIssue[] {
   const issues: TextIssue[] = [];
-  const blocks = chapter.content.split(/\n(?=#{2,3}\s)/);
+  const blocks = chapter.content.split(/\n(?=#{2,4}\s)/);
   for (let i = 0; i < blocks.length - 1; i++) {
-    if (!/^#{2,3}\s*ingredienti/i.test(blocks[i]) || !/^#{2,3}\s*(procedimento|preparazione)/i.test(blocks[i + 1])) continue;
+    if (!/^#{2,4}\s*ingredienti/i.test(blocks[i]) || !/^#{2,4}\s*(procedimento|preparazione)/i.test(blocks[i + 1])) continue;
     const method = norm(blocks[i + 1]);
     for (const line of blocks[i].split('\n').filter((l) => /^\s*[-*]\s+/.test(l))) {
       const words = norm(line.replace(/\([^)]*\)/g, '')).split(' ').filter((w) => w.length > 3 && !/^\d/.test(w) && !['grammi', 'cucchiai', 'cucchiaio', 'cucchiaino', 'pizzico', 'quanto', 'basta', 'litro', 'litri', 'circa', 'tazza', 'tazze', 'spicchio', 'spicchi', 'fette', 'fetta'].includes(w));
@@ -84,7 +91,7 @@ export function analyzeManuscript(project: Project, chapters: Chapter[]): TextIs
       issues.push({ ...base, kind: 'lunghezza', severity: 'critico', message: 'Capitolo vuoto.' });
       continue;
     }
-    if (c.generatedBy === 'mock' || c.content.includes(MOCK_MARKER)) {
+    if (c.generatedBy === 'mock' || containsMockText(c.content)) {
       issues.push({ ...base, kind: 'mock', severity: 'critico', message: 'Contiene testo DEMO generato dal mock: non è contenuto pubblicabile.' });
     }
     for (const m of c.content.matchAll(PLACEHOLDER_RE)) {

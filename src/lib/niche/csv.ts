@@ -72,13 +72,17 @@ export function parseNicheCsv(text: string, opts: { fileName: string; newId: () 
     return result;
   }
   const parsed = Papa.parse<Record<string, string>>(text.replace(/^﻿/, ''), {
-    header: true, skipEmptyLines: 'greedy', transformHeader: (h) => h.trim(),
+    header: true, skipEmptyLines: false, transformHeader: (h) => h.trim(),
   });
   const fields = parsed.meta.fields ?? [];
-  const rows = parsed.data;
+  // Le righe vuote vengono saltate mantenendo il numero di riga reale del file.
+  const numbered = parsed.data.map((r, i) => ({ r, line: i + 2 })).filter((x) => Object.values(x.r).some((v) => String(v ?? '').trim()));
+  const kept = new Set(numbered.map((x) => x.line));
+  const rows = numbered.map((x) => x.r);
+  const lineOf = (i: number) => numbered[i].line;
   result.rowsRead = rows.length;
   for (const e of parsed.errors) {
-    if (e.code === 'UndetectableDelimiter') continue;
+    if (e.code === 'UndetectableDelimiter' || !kept.has((e.row ?? 0) + 2)) continue;
     result.errors.push({ row: (e.row ?? 0) + 2, message: `Riga malformata: ${e.message}` });
   }
   if (!fields.includes('keyword') || !fields.includes('marketplace')) {
@@ -105,7 +109,7 @@ export function parseNicheCsv(text: string, opts: { fileName: string; newId: () 
 
   if (isSignals) {
     rows.forEach((r, i) => {
-      const line = i + 2;
+      const line = lineOf(i);
       const keyword = (r.keyword ?? '').trim();
       if (!keyword) return void result.errors.push({ row: line, message: 'Keyword mancante.' });
       const marketplace = normMarketplace(r.marketplace ?? '');
@@ -141,7 +145,7 @@ export function parseNicheCsv(text: string, opts: { fileName: string; newId: () 
 
   const groups = new Map<string, { niche: Niche; competitors: Competitor[]; source: string; observedAt: string | null }>();
   rows.forEach((r, i) => {
-    const line = i + 2;
+    const line = lineOf(i);
     const keyword = (r.keyword ?? '').trim();
     const title = (r.title ?? '').trim();
     if (!keyword || !title) return void result.errors.push({ row: line, message: 'Servono sia "keyword" sia "title".' });

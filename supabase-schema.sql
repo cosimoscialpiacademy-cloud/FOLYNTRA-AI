@@ -28,6 +28,7 @@ create table if not exists public.niches (
   created_at timestamptz not null default now()
 );
 
+alter table public.projects drop constraint if exists projects_niche_fk;
 alter table public.projects add constraint projects_niche_fk foreign key(niche_id) references public.niches(id) on delete set null;
 
 create table if not exists public.market_evidence (
@@ -159,16 +160,53 @@ create index if not exists idx_chapters_book on public.chapters(book_id,position
 create index if not exists idx_jobs_user_status on public.generation_jobs(user_id,status);
 create index if not exists idx_sales_book_date on public.sales_entries(book_id,sales_date);
 
+
+-- ---------------------------------------------------------------------------
+-- Integrazioni FOLYNTRA Fase A (additive rispetto allo starter).
+-- ---------------------------------------------------------------------------
+-- Dati completi della nicchia (segnali con provenienza, concorrenti, rischi).
+alter table public.niches add column if not exists data jsonb not null default '{}'::jsonb;
+-- Dati editoriali del capitolo non coperti dalle colonne (riassunto, sezioni, parole obiettivo, origine).
+alter table public.chapters add column if not exists meta jsonb not null default '{}'::jsonb;
+-- Costi AI in USD con precisione sub-centesimo e modello usato.
+alter table public.cost_events add column if not exists cost_usd numeric(12,6) not null default 0;
+alter table public.cost_events add column if not exists model text;
+-- Il riordino dei capitoli avviene con upsert singoli: il vincolo unico su (book_id, position)
+-- lo renderebbe impossibile senza transazione. Resta l'indice idx_chapters_book.
+alter table public.chapters drop constraint if exists chapters_book_id_position_key;
+
+create table if not exists public.chapter_revisions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  book_id uuid not null references public.books(id) on delete cascade,
+  chapter_id uuid not null references public.chapters(id) on delete cascade,
+  content_md text not null default '',
+  word_count integer not null default 0 check(word_count >= 0),
+  reason text not null default 'salvataggio',
+  created_at timestamptz not null default now()
+);
+create table if not exists public.activity_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  book_id uuid references public.books(id) on delete cascade,
+  message text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_revisions_chapter on public.chapter_revisions(chapter_id, created_at);
+create index if not exists idx_activity_user on public.activity_log(user_id, created_at);
+create index if not exists idx_costs_book on public.cost_events(book_id);
+create index if not exists idx_exports_book on public.export_artifacts(book_id);
+
 -- EVERY table must enforce row ownership, and linked writes must not cross tenant boundaries.
 -- Below permissive policies are narrowed by WITH CHECK verifying parent rows where relevant.
 do $$
 declare tbl text;
 begin
-  foreach tbl in array array['projects','niches','market_evidence','books','chapters','book_assets','generation_jobs','export_artifacts','ad_campaign_plans','sales_entries','cost_events']
+  foreach tbl in array array['projects','niches','market_evidence','books','chapters','chapter_revisions','activity_log','book_assets','generation_jobs','export_artifacts','ad_campaign_plans','sales_entries','cost_events']
   loop
     execute format('alter table public.%I enable row level security', tbl);
-    execute format('drop policy if exists %I on public.%I', 'owner_all_'+tbl, tbl);
-    execute format('create policy %I on public.%I for all to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', 'owner_all_'+tbl, tbl);
+    execute format('drop policy if exists %I on public.%I', 'owner_all_'||tbl, tbl);
+    execute format('create policy %I on public.%I for all to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', 'owner_all_'||tbl, tbl);
   end loop;
 end $$;
 
@@ -185,26 +223,43 @@ create or replace function public.owns_book(b_id uuid) returns boolean language 
 $$;
 
 -- Reinforce linked-object INSERT/UPDATE constraints; `user_id` alone is insufficient.
+drop policy if exists project_niche_consistency on public.projects;
 create policy project_niche_consistency on public.projects as restrictive for all to authenticated
   using (niche_id is null or public.owns_niche(niche_id))
   with check (niche_id is null or public.owns_niche(niche_id));
+drop policy if exists evidence_niche_consistency on public.market_evidence;
 create policy evidence_niche_consistency on public.market_evidence as restrictive for all to authenticated
   using (public.owns_niche(niche_id)) with check(public.owns_niche(niche_id));
+drop policy if exists book_project_consistency on public.books;
 create policy book_project_consistency on public.books as restrictive for all to authenticated
   using (public.owns_project(project_id)) with check(public.owns_project(project_id));
+drop policy if exists chapters_book_consistency on public.chapters;
 create policy chapters_book_consistency on public.chapters as restrictive for all to authenticated
   using (public.owns_book(book_id)) with check(public.owns_book(book_id));
+drop policy if exists assets_book_consistency on public.book_assets;
 create policy assets_book_consistency on public.book_assets as restrictive for all to authenticated
   using (public.owns_book(book_id)) with check(public.owns_book(book_id));
+drop policy if exists jobs_book_consistency on public.generation_jobs;
 create policy jobs_book_consistency on public.generation_jobs as restrictive for all to authenticated
   using (book_id is null or public.owns_book(book_id)) with check(book_id is null or public.owns_book(book_id));
+drop policy if exists exports_book_consistency on public.export_artifacts;
 create policy exports_book_consistency on public.export_artifacts as restrictive for all to authenticated
   using (public.owns_book(book_id)) with check(public.owns_book(book_id));
+drop policy if exists adplans_book_consistency on public.ad_campaign_plans;
 create policy adplans_book_consistency on public.ad_campaign_plans as restrictive for all to authenticated
   using (public.owns_book(book_id)) with check(public.owns_book(book_id));
+drop policy if exists sales_book_consistency on public.sales_entries;
 create policy sales_book_consistency on public.sales_entries as restrictive for all to authenticated
   using (public.owns_book(book_id)) with check(public.owns_book(book_id));
+drop policy if exists costs_book_consistency on public.cost_events;
 create policy costs_book_consistency on public.cost_events as restrictive for all to authenticated
+  using (book_id is null or public.owns_book(book_id)) with check(book_id is null or public.owns_book(book_id));
+
+drop policy if exists revisions_book_consistency on public.chapter_revisions;
+create policy revisions_book_consistency on public.chapter_revisions as restrictive for all to authenticated
+  using (public.owns_book(book_id)) with check(public.owns_book(book_id));
+drop policy if exists activity_book_consistency on public.activity_log;
+create policy activity_book_consistency on public.activity_log as restrictive for all to authenticated
   using (book_id is null or public.owns_book(book_id)) with check(book_id is null or public.owns_book(book_id));
 
 -- For production: configure private Supabase Storage buckets and path-based RLS,

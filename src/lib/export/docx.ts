@@ -93,7 +93,8 @@ export async function buildDocx(bundle: BookBundle, year = new Date().getFullYea
   if (project.matter.preface.trim()) children.push(h1('Prefazione'), ...md(project.matter.preface));
   for (const c of sortedChapters(bundle.chapters)) children.push(h1(`${c.position}. ${c.title}`), ...md(c.content));
   if (project.matter.conclusion.trim()) children.push(h1('Conclusione'), ...md(project.matter.conclusion));
-  if (project.glossary.length) children.push(h1('Glossario'), ...project.glossary.map((g) => new Paragraph({ children: [new TextRun({ text: `${g.term}: `, bold: true }), new TextRun(g.definition)], spacing: { after: 120 } })));
+  const glossary = project.glossary.filter((g) => g.term.trim() && g.definition.trim());
+  if (glossary.length) children.push(h1('Glossario'), ...glossary.map((g) => new Paragraph({ children: [new TextRun({ text: `${g.term}: `, bold: true }), new TextRun(g.definition)], spacing: { after: 120 } })));
   const verified = project.sources.filter((s) => s.verified && s.citation.trim());
   if (verified.length) children.push(h1('Bibliografia'), ...verified.map((s) => new Paragraph({ text: `${s.citation}${s.url ? ` ${s.url}` : ''}`, spacing: { after: 120 } })));
   if (project.matter.acknowledgments.trim()) children.push(h1('Ringraziamenti'), ...md(project.matter.acknowledgments));

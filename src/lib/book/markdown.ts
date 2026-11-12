@@ -67,7 +67,9 @@ export function tokensToXhtml(tokens: Token[]): string {
           const items = l.items
             .map((it) => {
               const box = it.task ? `<span class="checkbox${it.checked ? ' checked' : ''}"></span> ` : '';
-              const inner = it.tokens.length === 1 && it.tokens[0].type === 'text' ? inlineToXhtml((it.tokens[0] as Tokens.Text).tokens ?? [it.tokens[0]]) : tokensToXhtml(it.tokens).replace(/^<p>([\s\S]*?)<\/p>/, '$1');
+              // marked inserisce un token 'checkbox' per le attività: lo rendiamo noi con uno span.
+              const toks = it.tokens.filter((x) => (x.type as string) !== 'checkbox');
+              const inner = toks.length === 1 && toks[0].type === 'text' ? inlineToXhtml((toks[0] as Tokens.Text).tokens ?? [toks[0]]) : tokensToXhtml(toks).replace(/^<p>([\s\S]*?)<\/p>/, '$1');
               return `<li>${box}${inner}</li>`;
             })
             .join('');
