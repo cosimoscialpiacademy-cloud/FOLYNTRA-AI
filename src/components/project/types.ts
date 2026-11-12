@@ -9,4 +9,4 @@ export interface TabProps {
   goTo: (tab: TabKey) => void;
 }
 
-export type TabKey = 'brief' | 'indice' | 'scrittura' | 'studio' | 'kit';
+export type TabKey = 'brief' | 'indice' | 'scrittura' | 'studio' | 'kit' | 'vendite';

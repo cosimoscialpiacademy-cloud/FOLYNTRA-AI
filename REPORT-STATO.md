@@ -11,9 +11,9 @@
 | `npm install` | ok, `npm audit --omit=dev`: 0 vulnerabilità |
 | `npm run typecheck` | 0 errori |
 | `npm run lint` | 0 errori, 0 avvisi |
-| `npm test` | 36/36 test in 5 file |
+| `npm test` | 44/44 test in 6 file |
 | `npm run build` | compilato; 5 pagine e 3 route API |
-| `npm run e2e` (su `npm start`) | 16/16 passi, 0 errori in console |
+| `npm run e2e` (su `npm start`) | 17/17 passi, 0 errori in console |
 
 ## Percorso DEMO dimostrato (E2E automatico nel browser)
 
@@ -31,7 +31,8 @@ Progetto «Manuale pratico di manutenzione domestica di base», mercato Italia.
 10. Copertina: 3 proposte, template scelto; PDF interno di 11 pagine; dorso calcolato dalle pagine reali.
 11. Export ZIP: scaricato, stato **BOZZA** (corretto: contiene testo mock), stati di pubblicazione bloccati.
 12. Checksum SHA-256 del manifest ricalcolati e coincidenti per tutti i file.
-13. Dashboard aggiornata; iPhone 390 px senza scorrimento orizzontale su 4 pagine e 5 schede.
+13. Ads & Royalties: piano creato dalle keyword, report Ads importato (ACOS 41,06%, ROAS 2,44 calcolati dai dati), royalties importate (25,90 EUR), riga con data non valida scartata con messaggio.
+14. Dashboard aggiornata; iPhone 390 px senza scorrimento orizzontale su 4 pagine e 6 schede.
 
 ### File prodotti nello ZIP (`…-kdp-kit-BOZZA.zip`, 17 pagine)
 
@@ -69,6 +70,7 @@ Un secondo test (`tests/export.test.ts`) esporta un libro con testo rivisto e co
 - Book Writer: job per capitolo, salvataggio progressivo, ripresa dopo interruzione, retry, idempotenza, budget, token e costi, cronologia versioni, controlli (segnaposto, fonti mancanti, duplicati, indice, ricette), revisione AI.
 - Cover & Interior: 3 template originali, palette, font, testi; PDF interno paginato; anteprima fronte e copertina completa con guide.
 - KDP Kit: ZIP, QA che blocca lo stato "pronto", stati di pubblicazione dichiarati dall'utente.
+- Ads & Royalties: piano Sponsored Products manuale, ACOS di pareggio, CPC massimo, import report Ads e royalties KDP in CSV, margine reale distinto da quello stimato; la dashboard mostra spesa Ads e royalties solo se importate.
 - Backup/ripristino JSON dei dati, PWA installabile con pagina offline.
 
 ## Cosa NON è stato verificato
@@ -88,13 +90,14 @@ Un secondo test (`tests/export.test.ts`) esporta un libro con testo rivisto e co
 - **Schema SQL**: corretto un errore di sintassi nello starter (`+` al posto di `||` nel blocco delle policy) e aggiunte in modo additivo due tabelle (`chapter_revisions`, `activity_log`) e alcune colonne; rimosso il vincolo unico su `(book_id, position)` che impediva il riordino dei capitoli.
 - **Limite di frequenza**: in memoria per istanza, non distribuito.
 - **Costi di stampa in euro**: non ho trovato la tabella ufficiale per Amazon.it; i valori sono marcati "indicativi" in interfaccia e nei file. Quelli in dollari e sterline corrispondono alla documentazione KDP consultata.
-- **Test 9 e 11 di `docs/06`**: il bonus PDF è incluso (quaderno operativo derivato dall'indice); l'Ads planner con import CSV **non** è implementato (Fase B).
+- **Test 9 e 11 di `docs/06`**: il bonus PDF è incluso (quaderno operativo derivato dall'indice); Ads planner e import CSV sono implementati. Gli alias delle colonne dei report Amazon **non sono stati verificati su file reali**: se un tuo report non viene riconosciuto, l'errore elenca le colonne attese.
 
 ## Cosa resta da fare
 
 - **Subito, con le tue credenziali:** prova reale con Anthropic; progetto Supabase e test RLS con due utenti; scelta dell'hosting e deploy verificato.
 - **Fase A, rifiniture:** immagini caricate dall'utente in copertina; trascinamento per riordinare i capitoli (oggi frecce su/giù); annulla/ripeti nell'editor oltre alla cronologia.
-- **Fase B:** adapter Keepa, import trend, report vendite KDP, Ads planner (ACOS, ROAS, break-even), A+ content, pagina autore, email e post di lancio, altri bonus.
+- **Fase B rimanente:** adapter Keepa, import trend, A+ content, pagina autore, email e post di lancio, altri bonus.
+- **Per vendere il software:** login multiutente verificato, controllo di spesa AI lato server per utente (oppure chiave Anthropic personale dell'acquirente), pagamenti e licenze, hosting con Chromium, termini di servizio e informativa privacy.
 - **Fase C:** Amazon Ads API dopo approvazione, abbonamenti e team, traduzioni, illustrazioni, fiction.
 
 ## API con costo potenziale

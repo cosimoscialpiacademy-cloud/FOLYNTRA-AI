@@ -246,6 +246,56 @@ export interface Activity {
   createdAt: string;
 }
 
+export type MatchType = 'exact' | 'phrase' | 'broad';
+
+export interface AdGroup {
+  name: string;
+  matchType: MatchType;
+  keywords: string[];
+  bid: number;
+}
+
+/** Riga di un report Sponsored Products importato dall'utente. */
+export interface AdReportRow {
+  campaign: string;
+  target: string;
+  impressions: number;
+  clicks: number;
+  spend: number;
+  sales: number;
+  orders: number;
+}
+
+/** Piano campagna MANUALE: FOLYNTRA non crea né avvia campagne. */
+export interface AdPlan {
+  id: string;
+  projectId: string;
+  status: 'planning' | 'manual_ready';
+  dailyBudget: number;
+  defaultBid: number;
+  /** Tasso di conversione IPOTIZZATO dall'utente (clic → ordine), in %. */
+  assumedCvrPct: number;
+  groups: AdGroup[];
+  negatives: string[];
+  asinTargets: string[];
+  reportRows: AdReportRow[];
+  reportFileName: string | null;
+  reportImportedAt: string | null;
+  updatedAt: string;
+}
+
+export interface SaleEntry {
+  id: string;
+  projectId: string;
+  date: string;
+  marketplace: string;
+  title: string;
+  units: number;
+  royalty: number;
+  currency: string;
+  source: 'manual' | 'user_kdp_csv';
+}
+
 export interface CollectionMap {
   niches: Niche;
   projects: Project;
@@ -255,6 +305,8 @@ export interface CollectionMap {
   costs: CostEvent;
   exports: ExportRecord;
   activity: Activity;
+  adPlans: AdPlan;
+  sales: SaleEntry;
 }
 export type CollectionName = keyof CollectionMap;
 

@@ -116,7 +116,7 @@ export default function SettingsPage() {
           <Card>
             <CardTitle>Non ancora disponibili</CardTitle>
             <ul className="list-disc space-y-1 pl-5 text-sm text-slate2">
-              <li><strong className="text-ink">Fase B:</strong> adapter Keepa, import trend, report vendite KDP, Ads planner con import CSV, contenuti A+, pagina autore, email e post di lancio, altri bonus.</li>
+              <li><strong className="text-ink">Fase B:</strong> adapter Keepa, import trend, contenuti A+, pagina autore, email e post di lancio, altri bonus. (Ads planner e import royalties sono già nella scheda “Ads &amp; Royalties” di ogni progetto.)</li>
               <li><strong className="text-ink">Fase C:</strong> Amazon Ads API (previa approvazione), abbonamenti e team, traduzioni, illustrazioni, fiction.</li>
             </ul>
           </Card>

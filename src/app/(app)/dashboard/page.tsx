@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/shell';
 import { Badge, Card, CardTitle, Empty, Progress } from '@/components/ui';
+import { summarizeSales, totals } from '@/lib/ads/metrics';
 import { STATUS_LABEL, projectPercent, projectSteps } from '@/lib/progress';
 import { useLive } from '@/lib/store/context';
 import { formatDateTime, formatMoney, wordCount } from '@/lib/utils';
@@ -25,6 +26,11 @@ export default function DashboardPage() {
   const exports = useLive('exports');
   const costs = useLive('costs');
   const activity = useLive('activity');
+  const plans = useLive('adPlans');
+  const sales = useLive('sales');
+  const adRows = plans.data.flatMap((p) => p.reportRows);
+  const ad = totals(adRows);
+  const royalties = summarizeSales(sales.data);
 
   const written = chapters.data.filter((c) => wordCount(c.content) > 0);
   const reviewed = chapters.data.filter((c) => c.status === 'reviewed' || c.status === 'locked');
@@ -48,14 +54,32 @@ export default function DashboardPage() {
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Card>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate2">Spesa Ads</p>
-          <p className="mt-1 text-sm text-ink">Dato non disponibile.</p>
-          <p className="mt-1 text-xs text-slate2">L’import dei report Amazon Ads arriva con la Fase B. Nessuna campagna è collegata.</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate2">Spesa Ads (dai report importati)</p>
+          {adRows.length === 0 ? (
+            <>
+              <p className="mt-1 text-sm text-ink">Dato non disponibile.</p>
+              <p className="mt-1 text-xs text-slate2">Importa un report Sponsored Products nella scheda “Ads &amp; Royalties” di un progetto. Nessuna campagna è collegata né avviata da FOLYNTRA.</p>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 font-serif text-2xl font-bold text-midnight">{ad.spend.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</p>
+              <p className="mt-1 text-xs text-slate2">Somma nella valuta dei report · ACOS {ad.acosPct === null ? 'n/d' : `${ad.acosPct}%`} · {ad.orders} ordini · {plans.data.filter((p) => p.reportRows.length).length} libri con report</p>
+            </>
+          )}
         </Card>
         <Card>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate2">Royalties e margini netti</p>
-          <p className="mt-1 text-sm text-ink">Dato non disponibile.</p>
-          <p className="mt-1 text-xs text-slate2">Servono i report KDP reali (import CSV, Fase B). Gli scenari ipotetici sono nelle schede nicchia e nel KDP Kit, sempre etichettati.</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate2">Royalties reali e margine</p>
+          {sales.data.length === 0 ? (
+            <>
+              <p className="mt-1 text-sm text-ink">Dato non disponibile.</p>
+              <p className="mt-1 text-xs text-slate2">Servono i tuoi report KDP (import CSV nella scheda “Ads &amp; Royalties”). Gli scenari ipotetici restano separati e sempre etichettati.</p>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 font-serif text-2xl font-bold text-midnight">{royalties.byCurrency.map((c) => `${c.royalty.toLocaleString('it-IT', { minimumFractionDigits: 2 })} ${c.currency}`).join(' · ')}</p>
+              <p className="mt-1 text-xs text-slate2">{royalties.units} copie dai report importati{royalties.byCurrency.length === 1 && adRows.length ? ` · dopo Ads: ${(royalties.byCurrency[0].royalty - ad.spend).toLocaleString('it-IT', { minimumFractionDigits: 2 })} ${royalties.byCurrency[0].currency}` : ''} · prima delle imposte</p>
+            </>
+          )}
         </Card>
       </div>
 

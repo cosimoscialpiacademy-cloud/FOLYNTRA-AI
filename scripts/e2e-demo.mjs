@@ -191,6 +191,28 @@ try {
     return `${zipFiles.length} file, ${manifest.pagine} pagine`;
   });
 
+  await step('Ads & Royalties: piano manuale, import report, ACOS e pareggio', async () => {
+    await page.getByRole('tab', { name: /Ads & Royalties/ }).click();
+    await page.getByText('Nessun report importato: nessuna performance viene mostrata').waitFor({ state: 'detached', timeout: 1000 }).catch(() => undefined);
+    await page.getByRole('button', { name: 'Crea piano Ads' }).click();
+    await page.getByText('ACOS di pareggio').waitFor();
+    await page.getByText(/avvio campagne manuale finché Amazon Ads API non è autorizzata/).waitFor();
+    await page.getByText('Nessun report importato: nessuna performance viene mostrata').waitFor();
+    await page.setInputFiles('#ads-report-file', { name: 'report-ads.csv', mimeType: 'text/csv', buffer: Buffer.from('Campaign Name,Targeting,Impressions,Clicks,Spend,7 Day Total Sales,7 Day Total Orders (#)\n"Manuale casa","manutenzione casa","1,200",40,"€ 12,00","€ 38,97",3\n"Manuale casa","fai da te",800,10,"€ 4,00","€ 0,00",0\n') });
+    const box = page.getByTestId('ads-results');
+    await box.waitFor();
+    const text = (await box.innerText()).replace(/\s+/g, ' ');
+    assert(text.includes('41,06%'), `ACOS atteso 41,06% — ${text.slice(0, 200)}`);
+    assert(text.includes('2,44'), 'ROAS atteso 2,44');
+    await page.setInputFiles('#royalties-file', { name: 'royalties.csv', mimeType: 'text/csv', buffer: Buffer.from('Royalty Date,Title,Marketplace,Units Sold,Royalty,Currency\n2026-10-31,"Manuale",Amazon.it,5,"18,50",EUR\n2026-10-31,"Manuale",Amazon.de,2,"7,40",EUR\nnon-una-data,"Manuale",Amazon.it,1,1,EUR\n') });
+    const roy = page.getByTestId('royalties-results');
+    await roy.waitFor();
+    assert((await roy.innerText()).includes('25,90'), 'totale royalties atteso 25,90');
+    await page.getByText(/Data non valida/).waitFor();
+    await shot('07b-ads-royalties');
+    return 'ACOS 41,06% · ROAS 2,44 · royalties 25,90 EUR';
+  });
+
   await step('Dashboard aggiornata con dati reali', async () => {
     await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' });
     await page.getByText(TITLE).first().waitFor();
@@ -209,14 +231,14 @@ try {
     }
     await page.goto(`${BASE}/progetti`, { waitUntil: 'networkidle' });
     await page.getByRole('link', { name: TITLE }).click();
-    for (const tab of ['Brief', 'Indice', 'Scrittura', 'Cover', 'KDP Kit']) {
+    for (const tab of ['Brief', 'Indice', 'Scrittura', 'Cover', 'KDP Kit', 'Ads & Royalties']) {
       await page.getByRole('tab', { name: new RegExp(tab) }).click();
       await page.waitForTimeout(300);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       assert(overflow <= 1, `scorrimento orizzontale di ${overflow}px nella scheda ${tab}`);
-      await shot(`09-mobile-${tab.toLowerCase().replace(/\s/g, '-')}`, { fullPage: false });
+      await shot(`09-mobile-${tab.toLowerCase().replace(/[^a-z]+/g, '-')}`, { fullPage: false });
     }
-    return `${report.length} pagine + 5 schede`;
+    return `${report.length} pagine + 6 schede`;
   });
 
   await step('Nessun errore in console', async () => {

@@ -6,7 +6,7 @@ import type { CollectionMap, CollectionName } from '../types';
 import { COLLECTIONS, Emitter, type DataStore, type ListFilter } from './types';
 
 const DB_NAME = 'folyntra-ai';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function req<T>(r: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {

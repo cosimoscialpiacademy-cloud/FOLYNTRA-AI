@@ -175,6 +175,9 @@ alter table public.cost_events add column if not exists model text;
 -- lo renderebbe impossibile senza transazione. Resta l'indice idx_chapters_book.
 alter table public.chapters drop constraint if exists chapters_book_id_position_key;
 
+-- Titolo riportato nel report royalties importato dall'utente.
+alter table public.sales_entries add column if not exists title text;
+
 create table if not exists public.chapter_revisions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,

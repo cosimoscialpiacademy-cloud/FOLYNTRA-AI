@@ -15,7 +15,7 @@ export interface DataStore {
   subscribe(listener: (collection: CollectionName) => void): () => void;
 }
 
-export const COLLECTIONS: CollectionName[] = ['niches', 'projects', 'chapters', 'revisions', 'jobs', 'costs', 'exports', 'activity'];
+export const COLLECTIONS: CollectionName[] = ['niches', 'projects', 'chapters', 'revisions', 'jobs', 'costs', 'exports', 'activity', 'adPlans', 'sales'];
 
 export class Emitter {
   private listeners = new Set<(c: CollectionName) => void>();

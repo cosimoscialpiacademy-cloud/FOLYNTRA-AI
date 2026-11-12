@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { evaluateNiche } from '../niche/engine';
-import type { Activity, Chapter, ChapterRevision, CollectionMap, CollectionName, CostEvent, ExportRecord, Job, Niche, Project } from '../types';
+import type { Activity, AdPlan, SaleEntry, Chapter, ChapterRevision, CollectionMap, CollectionName, CostEvent, ExportRecord, Job, Niche, Project } from '../types';
 import { wordCount } from '../utils';
 import { Emitter, type DataStore, type ListFilter } from './types';
 
@@ -81,6 +81,16 @@ const MAP: { [K in CollectionName]: Mapping<CollectionMap[K]> } = {
     table: 'activity_log', projectColumn: 'book_id',
     toRow: (a: Activity, user_id) => ({ id: a.id, user_id, book_id: a.projectId, message: a.message, created_at: a.createdAt }),
     fromRow: (r) => ({ id: r.id as string, projectId: (r.book_id as string) ?? null, message: r.message as string, createdAt: r.created_at as string }),
+  },
+  adPlans: {
+    table: 'ad_campaign_plans', projectColumn: 'book_id',
+    toRow: (a: AdPlan, user_id) => ({ id: a.id, user_id, book_id: a.projectId, marketplace: 'amazon', plan: a, status: a.status }),
+    fromRow: (r) => r.plan as AdPlan,
+  },
+  sales: {
+    table: 'sales_entries', projectColumn: 'book_id',
+    toRow: (x: SaleEntry, user_id) => ({ id: x.id, user_id, book_id: x.projectId, sales_date: x.date, marketplace: x.marketplace, units: x.units, royalty_amount: x.royalty, currency: x.currency, source_type: x.source, title: x.title }),
+    fromRow: (r) => ({ id: r.id as string, projectId: r.book_id as string, date: r.sales_date as string, marketplace: r.marketplace as string, title: (r.title as string) ?? '', units: r.units as number, royalty: Number(r.royalty_amount ?? 0), currency: r.currency as string, source: r.source_type as SaleEntry['source'] }),
   },
 };
 

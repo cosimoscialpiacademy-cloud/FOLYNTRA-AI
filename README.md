@@ -28,6 +28,7 @@ Apri http://localhost:3000 ed entra in **modalità demo locale**: nessun account
 4. **Scrittura** — un job per capitolo con salvataggio progressivo, ripresa, nessun duplicato a parità di richiesta, cronologia versioni, costi e budget, controlli automatici e revisione AI.
 5. **Cover & interni** — 3 copertine originali personalizzabili; PDF interno con margini a specchio, intestazioni pari/dispari, indice con pagine reali; dorso calcolato dal numero di pagine effettivo.
 6. **KDP Kit** — un clic produce lo ZIP con tutti i file, report QA e manifest SHA-256. Lo stato "pronto" è bloccato finché un controllo critico non passa.
+7. **Ads & Royalties** — piano Sponsored Products manuale (gruppi per corrispondenza, negative, offerte, budget), ACOS di pareggio e CPC massimo, import dei report Ads e delle royalties KDP in CSV con ACOS, ROAS e margine. Nessuna campagna viene creata o avviata.
 
 ## Configurazione
 
@@ -51,7 +52,7 @@ Il modello predefinito è `claude-opus-5-5`. Per spendere meno: `claude-sonnet-5
 | `npm run dev` | sviluppo |
 | `npm run build` / `npm start` | produzione |
 | `npm run typecheck` · `npm run lint` | controlli statici |
-| `npm test` | 36 test (motore nicchie, CSV, regole KDP, job, export reale con Chromium) |
+| `npm test` | 44 test (motore nicchie, CSV, regole KDP, job, Ads e royalties, export reale con Chromium) |
 | `npm run e2e` | percorso demo completo nel browser; richiede l'app avviata (`E2E_BASE_URL`, default `http://localhost:3000`) |
 
 ## Architettura in breve
@@ -70,7 +71,8 @@ Le route server sono di solo calcolo: i dati restano nell'archivio dell'utente. 
 - Supabase, AI reale e deploy Netlify **non sono ancora stati verificati** (mancano progetto e chiavi): vedi `REPORT-STATO.md`.
 - Su Netlify il rendering PDF richiede un Chromium che le Functions non includono: serve un host Node con Chrome o un worker esterno.
 - Costi di stampa in euro indicativi: l'app li segnala come "da verificare" e permette di sovrascriverli.
-- Fase B e C (Keepa, Ads planner, report royalties, A+ content, immagini AI, traduzioni) non sono implementate e non compaiono come pulsanti.
+- Gli import di report Ads e royalties riconoscono le intestazioni più comuni (inglese e italiano) ma non sono stati provati su esportazioni reali di Amazon.
+- Keepa, A+ content, materiali di lancio, immagini AI e traduzioni non sono implementati e non compaiono come pulsanti.
 
 ## Licenze
 

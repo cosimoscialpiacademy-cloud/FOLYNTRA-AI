@@ -18,7 +18,7 @@ export default function ProjectsPage() {
 
   async function removeProject(id: string, title: string) {
     if (!window.confirm(`Eliminare definitivamente «${title}» con capitoli, versioni ed esportazioni registrate?`)) return;
-    for (const c of ['chapters', 'revisions', 'jobs', 'costs', 'exports', 'activity'] as const) {
+    for (const c of ['chapters', 'revisions', 'jobs', 'costs', 'exports', 'activity', 'adPlans', 'sales'] as const) {
       for (const d of await store.list(c, { projectId: id })) await store.remove(c, d.id);
     }
     await store.remove('projects', id);
