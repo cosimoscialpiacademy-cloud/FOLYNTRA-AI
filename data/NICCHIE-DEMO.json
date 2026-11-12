@@ -1,0 +1,28 @@
+{
+  "READ_ME": "SOLO DEMO fittizia, non analisi mercato Amazon né stima vendite. Mai mostrare senza etichetta DEMO.",
+  "sample_marketplace": "amazon.it",
+  "niches": [
+    {
+      "keyword": "Organizzazione domestica per piccoli appartamenti",
+      "buyer": "Adulti che vivono in spazi ridotti",
+      "demand": 78,
+      "competition": 65,
+      "trend": 55,
+      "unitEconomics": 60,
+      "differentiation": 72,
+      "evidenceConfidence": 0,
+      "demoOnly": true
+    },
+    {
+      "keyword": "Diario guidato per abitudini di lettura",
+      "buyer": "Lettori che vogliono monitorare le letture",
+      "demand": 54,
+      "competition": 57,
+      "trend": 47,
+      "unitEconomics": 58,
+      "differentiation": 70,
+      "evidenceConfidence": 0,
+      "demoOnly": true
+    }
+  ]
+}
