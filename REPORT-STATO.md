@@ -147,3 +147,11 @@ Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso dem
 - Eseguito: typecheck, lint, **77/77** test, e2e demo **18/18**, e2e accesso **8/8**.
 - **Non verificato:** l'agente con l'AI reale (solo mock e finto provider); la lettura di immagini da parte del modello vero.
 - Prossimi passi: Autopilota, ottimizzatore Ads (azioni suggerite), traduzioni, metodo personale da `docs/metodo-*.md`.
+
+## Aggiornamento — percentuali delle nicchie (Stima IA)
+
+- Problema: le ipotesi generate dall'IA nascevano senza segnali, quindi Opportunità «dato non disponibile», Affidabilità 0% e Copertura 0%.
+- Soluzione: **Stima IA** (stato `ai_estimate`): il modello dà un giudizio qualitativo 0-100 sui 5 segnali con motivazione; parte da sola dopo la generazione delle ipotesi, c'è il pulsante «Stima IA» (tutte le nicchie senza punteggio) e il pulsante nel dettaglio nicchia.
+- Onestà: non sono dati di mercato; badge «Stima IA» ovunque; affidabilità limitata a ~30%; non sovrascrive mai dati osservati/importati/manuali; con il mock restituisce errore (non inventa valutazioni); il prompt vieta di citare volumi, BSR, vendite o prezzi reali e chiede una checklist di verifica manuale.
+- Dati veri: concorrenti inseriti a mano, CSV (Keepa/Helium 10/Publisher Rocket…). Adattatore Keepa API: non ancora fatto (richiede la tua chiave a pagamento).
+- Eseguito: typecheck, lint, **83/83** test, e2e demo **18/18**, e2e accesso **8/8** (con percentuali verificate nel browser: opportunità 60, affidabilità 30%, copertura 100%).

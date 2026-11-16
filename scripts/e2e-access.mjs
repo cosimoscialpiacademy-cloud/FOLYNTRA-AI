@@ -18,13 +18,20 @@ if (!exe) throw new Error('Chromium non trovato: imposta CHROMIUM_EXECUTABLE_PAT
 // ---- finto provider compatibile Anthropic ----
 const upstream = [];
 const brainstorm = { ideas: Array.from({ length: 3 }, (_, i) => ({ keyword: `Idea reale di prova ${i + 1}`, buyerPersona: 'Persona di prova', secondaryKeywords: ['a', 'b', 'c'], unmetNeed: 'Bisogno di prova', differentiators: ['d1', 'd2'], risks: ['r1'] })) };
+const sig = (value) => ({ value, why: 'giudizio qualitativo di prova' });
 const fake = createServer(async (req, res) => {
   let s = '';
   for await (const c of req) s += c;
   const body = JSON.parse(s);
-  upstream.push({ key: req.headers['x-api-key'] ?? null, auth: req.headers.authorization ?? null, stream: Boolean(body.stream), headers: Object.keys(req.headers) });
+  const prompt = JSON.stringify(body.messages);
+  upstream.push({ key: req.headers['x-api-key'] ?? null, auth: req.headers.authorization ?? null, stream: Boolean(body.stream), headers: Object.keys(req.headers), scoring: prompt.includes('Valuta queste ipotesi di nicchia') });
+  let payload = brainstorm;
+  if (prompt.includes('Valuta queste ipotesi di nicchia')) {
+    const ids = [...prompt.matchAll(/id=([0-9a-zA-Z-]+)/g)].map((m) => m[1]);
+    payload = { results: ids.map((id, i) => ({ id, demand: sig(70 - i), competition: sig(50), trend: sig(60), unitEconomics: sig(55), differentiation: sig(65), risks: ['rischio di prova'], verifyChecklist: ['verifica 1', 'verifica 2'], summary: 'Sintesi di prova.' })) };
+  }
   res.writeHead(200, { 'content-type': 'application/json' });
-  res.end(JSON.stringify({ id: 'm', type: 'message', role: 'assistant', model: body.model, content: [{ type: 'text', text: JSON.stringify(brainstorm) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1200, output_tokens: 700 } }));
+  res.end(JSON.stringify({ id: 'm', type: 'message', role: 'assistant', model: body.model, content: [{ type: 'text', text: JSON.stringify(payload) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1200, output_tokens: 700 } }));
 });
 await new Promise((r) => fake.listen(0, '127.0.0.1', r));
 const fakePort = fake.address().port;
@@ -93,16 +100,27 @@ try {
     await page.screenshot({ path: path.join(OUT, '02-dashboard-ai-reale.png') });
   });
 
-  await step('Brainstorm con provider “reale”: risultati dal provider, chiave inviata solo da server', async () => {
+  await step('Brainstorm con provider “reale” + stima IA automatica: percentuali visibili e dichiarate', async () => {
     await page.goto(`${BASE}/nicchie`, { waitUntil: 'networkidle' });
     await page.getByPlaceholder(/manutenzione domestica/).fill('orto sul balcone');
     await page.getByRole('button', { name: /Genera ipotesi di nicchia/ }).click();
     await page.getByText('Idea reale di prova 1').first().waitFor({ timeout: 20000 });
-    assert(upstream.length === 1, `chiamate al provider: ${upstream.length}`);
-    assert(upstream[0].key === 'sk-ant-finta-solo-test' || String(upstream[0].auth).includes('sk-ant-finta-solo-test'), 'la chiave del server non è stata usata: ' + JSON.stringify(upstream[0]));
-    assert(upstream[0].auth === null || !String(upstream[0].auth).includes(CODE), 'il codice di accesso è finito al provider');
+    const row = page.locator('tr', { hasText: 'Idea reale di prova 1' });
+    await row.getByText('Stima IA').first().waitFor({ timeout: 20000 });
+    const cells = (await row.innerText()).replace(/\s+/g, ' ');
+    const m = cells.match(/(\d+)\s*Stima IA\s*(\d+)%\s*(\d+)%/);
+    assert(m, `riga senza percentuali: ${cells}`);
+    const [, score, conf, cov] = m.map(Number);
+    assert(score > 0 && score <= 100, `opportunità non valida: ${score}`);
+    assert(conf > 0 && conf <= 30, `affidabilità deve essere bassa (≤30%), trovata ${conf}%`);
+    assert(cov === 100, `copertura attesa 100%, trovata ${cov}%`);
+    await page.getByText(/non dati di mercato/).first().waitFor();
+    const calls = upstream.length;
+    assert(calls === 2, `chiamate al provider: ${calls} (attese 2: ipotesi + stima)`);
+    assert(upstream[0].key === 'sk-ant-finta-solo-test' || String(upstream[0].auth).includes('sk-ant-finta-solo-test'), 'la chiave del server non è stata usata');
+    assert(upstream.every((u) => !String(u.auth ?? '').includes(CODE)), 'il codice di accesso è finito al provider');
     await page.screenshot({ path: path.join(OUT, '03-brainstorm-reale.png'), fullPage: true });
-    return 'una sola chiamata, chiave server-side';
+    return `opportunità ${score}% · affidabilità ${conf}% · copertura ${cov}% · 2 chiamate`;
   });
 
   await step('Il codice resta salvato solo sul dispositivo; “Blocca” lo cancella e richiede di nuovo il codice', async () => {

@@ -142,6 +142,18 @@ describe('AI reale contro server finto compatibile Anthropic', () => {
     expect(err(ev)).toBeDefined();
   });
 
+  it('stima IA delle nicchie: risposta strutturata validata, un solo giro, prompt che vieta dati inventati', async () => {
+    const sig = (value: number) => ({ value, why: 'giudizio qualitativo' });
+    behavior = { text: JSON.stringify({ results: [{ id: 'n1', demand: sig(70), competition: sig(50), trend: sig(60), unitEconomics: sig(55), differentiation: sig(65), risks: ['r1'], verifyChecklist: ['c1'], summary: 's' }] }) };
+    const ev = await collect({ task: 'nicheScore', input: { items: [{ id: 'n1', keyword: 'orto sul balcone', buyerPersona: 'x', category: 'Casa', marketplace: 'amazon.it', secondaryKeywords: ['a'], notes: '' }], language: 'italiano' }, ...base });
+    expect(err(ev)).toBeUndefined();
+    expect((done(ev)!.data as { results: { id: string }[] }).results[0].id).toBe('n1');
+    expect(seen).toHaveLength(1);
+    const content = JSON.stringify(seen[0].body.messages);
+    expect(content).toMatch(/NON hai accesso a dati di mercato in tempo reale/);
+    expect(content).toMatch(/NON citare volumi di ricerca, BSR, vendite/);
+  });
+
   it('tetto di spesa: se il caso peggiore sfora il budget NON si chiama il modello', async () => {
     const ev = await collect({ ...chapterReq, spentUsd: 19.99, budgetUsd: 20 });
     expect(err(ev)!.message).toMatch(/Budget AI insufficiente/);

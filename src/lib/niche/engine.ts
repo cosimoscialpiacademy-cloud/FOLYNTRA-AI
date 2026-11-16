@@ -17,12 +17,14 @@ export const STATUS_LABEL: Record<EvidenceStatus, string> = {
   observed: 'Osservato',
   estimated: 'Stimato',
   imported: 'Importato',
+  ai_estimate: 'Stima IA',
   demo: 'DEMO',
   missing: 'Dato non disponibile',
 };
 
 /** Peso di affidabilità per provenienza: una stima vale meno di un dato osservato. */
-const STATUS_QUALITY: Record<EvidenceStatus, number> = { observed: 1, imported: 0.8, estimated: 0.5, demo: 0, missing: 0 };
+/** La stima dell'IA è un giudizio da conoscenze generali, non una misura: pesa poco (confidenza massima ~30%). */
+const STATUS_QUALITY: Record<EvidenceStatus, number> = { observed: 1, imported: 0.8, estimated: 0.5, ai_estimate: 0.3, demo: 0, missing: 0 };
 
 export function missingMetric(): Metric {
   return { value: null, unit: 'punti 0-100', status: 'missing', source: '', observedAt: null };
@@ -55,6 +57,8 @@ export interface NicheEvaluation {
   confidence: number;
   coverage: number;
   recommendation: string;
+  /** true se almeno un segnale è una stima dell'IA e non un dato di mercato. */
+  aiBased: boolean;
   missing: SignalKey[];
   breakdown: { key: SignalKey; label: string; value: number | null; weight: number; contribution: number | null; status: EvidenceStatus; source: string; observedAt: string | null }[];
   topRisks: string[];
@@ -109,7 +113,9 @@ export function evaluateNiche(niche: Pick<Niche, 'signals' | 'demoOnly' | 'risks
   if (niche.competitors.length === 0) risks.push('Nessun concorrente osservato: la competizione non è documentata.');
   else if (niche.competitors.some((c) => !c.verified)) risks.push('Alcuni concorrenti non sono verificati.');
 
-  return { score, confidence: rawConfidence, coverage, recommendation, missing, breakdown, topRisks: risks.slice(0, 3) };
+  const aiBased = SIGNALS.some((s) => niche.signals[s.key].status === 'ai_estimate');
+  if (aiBased) risks.unshift('Il punteggio include stime dell’IA (giudizio qualitativo, non dati di mercato): verificalo su Amazon o importa dati reali.');
+  return { score, confidence: rawConfidence, coverage, recommendation, aiBased, missing, breakdown, topRisks: risks.slice(0, 3) };
 }
 
 function median(values: number[]): number | null {

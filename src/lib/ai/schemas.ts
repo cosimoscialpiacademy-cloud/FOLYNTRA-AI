@@ -120,6 +120,20 @@ export const CoverInput = z.object({
 });
 export const CoverCritiqueInput = CoverInput.extend({ ownCover: CoverImage });
 
+const Sig = z.object({ value: z.number(), why: z.string() });
+export const NicheScoreInput = z.object({
+  items: z.array(z.object({ id: z.string().max(80), keyword: short, buyerPersona: short, category: short, marketplace: short, secondaryKeywords: z.array(short).max(8), notes: z.string().max(800) })).min(1).max(12),
+  language: short,
+});
+export const NicheScoreOutput = z.object({
+  results: z.array(z.object({
+    id: z.string(),
+    demand: Sig, competition: Sig, trend: Sig, unitEconomics: Sig, differentiation: Sig,
+    risks: z.array(z.string()), verifyChecklist: z.array(z.string()), summary: z.string(),
+  })),
+});
+export type NicheScoreOutput = z.infer<typeof NicheScoreOutput>;
+
 export const AiRequest = z.discriminatedUnion('task', [
   z.object({ task: z.literal('brainstorm'), input: BrainstormInput }),
   z.object({ task: z.literal('concept'), input: ConceptInput }),
@@ -127,6 +141,7 @@ export const AiRequest = z.discriminatedUnion('task', [
   z.object({ task: z.literal('chapter'), input: ChapterInput }),
   z.object({ task: z.literal('review'), input: ReviewInput }),
   z.object({ task: z.literal('marketing'), input: MarketingInput }),
+  z.object({ task: z.literal('nicheScore'), input: NicheScoreInput }),
   z.object({ task: z.literal('cover'), input: CoverInput }),
   z.object({ task: z.literal('coverCritique'), input: CoverCritiqueInput }),
 ]).and(z.object({

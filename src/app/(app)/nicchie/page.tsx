@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, FlaskConical, Lightbulb, Plus, Upload } from 'lucide-react';
+import { Download, FlaskConical, Lightbulb, Plus, Sparkles, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { NicheDetail } from '@/components/niche/niche-detail';
 import { PageHeader } from '@/components/shell';
@@ -10,6 +10,7 @@ import { callAi, downloadBlob } from '@/lib/client-api';
 import { logActivity, recordCost } from '@/lib/generation';
 import { MARKETPLACES } from '@/lib/kdp/specs';
 import { CSV_TEMPLATE_COMPETITORS, CSV_TEMPLATE_SIGNALS, MAX_CSV_BYTES, parseNicheCsv, type CsvImportResult } from '@/lib/niche/csv';
+import { estimateNiches } from '@/lib/niche/ai-estimate';
 import { DEMO_NOTICE, buildDemoNiches } from '@/lib/niche/demo';
 import { SIGNALS, emptySignals, evaluateNiche, summarizeCompetitors } from '@/lib/niche/engine';
 import { useApp, useLive, useStore } from '@/lib/store/context';
@@ -33,6 +34,7 @@ export default function NichesPage() {
   const [compare, setCompare] = useState<string[]>([]);
   const [form, setForm] = useState({ theme: '', audience: '', category: '', marketplace: 'amazon.it' as Marketplace });
   const [brainstorming, setBrainstorming] = useState(false);
+  const [estimating, setEstimating] = useState(false);
   const [importResult, setImportResult] = useState<CsvImportResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -41,6 +43,7 @@ export default function NichesPage() {
   const selected = sorted.find((n) => n.id === selectedId) ?? null;
   const compared = sorted.filter((n) => compare.includes(n.id));
   const hasDemo = sorted.some((n) => n.demoOnly);
+  const noScore = sorted.filter((n) => !n.demoOnly && evaluateNiche(n).score === null);
 
   function open(id: string) {
     setSelectedId(id);
@@ -64,19 +67,46 @@ export default function NichesPage() {
         { token: await getToken() },
       );
       const out = done.data as BrainstormOutput;
+      const created: Niche[] = [];
       for (const idea of out.ideas.slice(0, 20)) {
-        await store.put('niches', newNiche(idea.keyword, form.marketplace, {
+        const n = newNiche(idea.keyword, form.marketplace, {
           buyerPersona: idea.buyerPersona, category: form.category.trim(), secondaryKeywords: idea.secondaryKeywords.slice(0, 6), differentiationIdeas: idea.differentiators, risks: idea.risks,
           commentary: `${done.provider === 'mock' ? 'Ipotesi generata dal mock dichiarato' : `Ipotesi generata da ${done.model}`}. Bisogno ipotizzato: ${idea.unmetNeed}`,
-        }));
+        });
+        await store.put('niches', n);
+        created.push(n);
       }
       await recordCost(store, null, `Brainstorming nicchie: ${form.theme.trim()}`, done);
       await logActivity(store, null, `${out.ideas.length} ipotesi di nicchia generate per «${form.theme.trim()}» (${done.provider === 'mock' ? 'mock' : done.model}).`);
-      toast(`${out.ideas.length} ipotesi create. Sono idee senza dati: aggiungi evidenze reali.`, 'ok');
+      toast(`${out.ideas.length} ipotesi create.${done.provider === 'mock' ? ' Sono idee senza dati: aggiungi evidenze reali.' : ' Ora le valuto con la stima IA…'}`, 'ok');
+      if (done.provider !== 'mock') await runEstimate(created, true);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Brainstorming non riuscito.', 'bad');
     } finally {
       setBrainstorming(false);
+    }
+  }
+
+  /** Stima IA dei cinque segnali (dichiarata come stima, affidabilità bassa). 12 nicchie per chiamata. */
+  async function runEstimate(list: Niche[], quiet = false) {
+    const todo = list.filter((n) => !n.demoOnly && evaluateNiche(n).score === null);
+    if (!todo.length) return quiet ? undefined : toast('Tutte le nicchie hanno già un punteggio (o sono DEMO).', 'info');
+    setEstimating(true);
+    try {
+      const token = await getToken();
+      let ok = 0;
+      for (let i = 0; i < todo.length; i += 12) {
+        const { updated, done } = await estimateNiches(todo.slice(i, i + 12), { token, budgetUsd: status?.ai.maxUsdPerBook ?? 20, language: MARKETPLACES[todo[i].marketplace].language });
+        for (const n of updated) await store.put('niches', n);
+        await recordCost(store, null, `Stima IA nicchie (${updated.length})`, done);
+        ok += updated.length;
+      }
+      await logActivity(store, null, `Stima IA di ${ok} nicchie: giudizi qualitativi, non dati di mercato.`);
+      toast(`${ok} nicchie valutate con la stima IA. Affidabilità bassa: verifica su Amazon o importa dati reali.`, 'ok');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Stima IA non riuscita.', 'bad');
+    } finally {
+      setEstimating(false);
     }
   }
 
@@ -169,7 +199,7 @@ export default function NichesPage() {
       {hasDemo && <Notice tone="demo" className="mt-4"><strong>DEMO.</strong> {DEMO_NOTICE} Affidabilità sempre 0%.</Notice>}
 
       <Card className="mt-4">
-        <CardTitle action={compare.length > 0 && <Button variant="ghost" size="sm" onClick={() => setCompare([])}>Azzera confronto ({compare.length})</Button>}>3 · Valuta e confronta</CardTitle>
+        <CardTitle action={<div className="flex flex-wrap gap-2">{noScore.length > 0 && <Button variant="gold" size="sm" loading={estimating} disabled={brainstorming || status?.ai.mode === 'mock'} title={status?.ai.mode === 'mock' ? 'Serve l’AI collegata' : undefined} onClick={() => void runEstimate(sorted)}><Sparkles className="size-4" aria-hidden /> Stima IA ({noScore.length} senza punteggio)</Button>}{compare.length > 0 && <Button variant="ghost" size="sm" onClick={() => setCompare([])}>Azzera confronto ({compare.length})</Button>}</div>}>3 · Valuta e confronta</CardTitle>
         {niches.loading ? (
           <p className="text-sm text-slate2">Caricamento…</p>
         ) : sorted.length === 0 ? (
@@ -197,7 +227,7 @@ export default function NichesPage() {
                           {n.status === 'selected' && <Badge tone="ok">Selezionata</Badge>}
                         </span>
                       </td>
-                      <td className="px-1 font-display text-lg font-bold text-ink">{ev.score ?? <span className="font-sans text-xs font-normal text-slate2">dato non disponibile</span>}</td>
+                      <td className="px-1 font-display text-lg font-bold text-ink">{ev.score ?? <span className="font-sans text-xs font-normal text-slate2">dato non disponibile</span>}{ev.aiBased && <Badge tone="warn" className="ml-1.5 align-middle font-sans">Stima IA</Badge>}</td>
                       <td className="px-1">{ev.confidence}%</td>
                       <td className="px-1">{ev.coverage}%</td>
                       <td className="px-1 text-xs text-slate2">{n.marketplace}</td>
@@ -209,6 +239,7 @@ export default function NichesPage() {
             </table>
           </div>
         )}
+        {sorted.some((n) => evaluateNiche(n).aiBased) && <p className="mt-3 text-xs text-slate2"><strong className="text-warn">Stima IA:</strong> giudizio qualitativo del modello su conoscenze generali, <strong>non dati di mercato</strong>. L’affidabilità resta bassa (max ~30%) finché non aggiungi dati reali: apri la nicchia, inserisci i concorrenti osservati su Amazon oppure importa un CSV (Keepa, Helium 10, Publisher Rocket…).</p>}
       </Card>
 
       {compared.length >= 2 && (

@@ -6,7 +6,7 @@ export type Marketplace = 'amazon.it' | 'amazon.com' | 'amazon.co.uk' | 'amazon.
 export type Currency = 'EUR' | 'USD' | 'GBP';
 
 /** Provenienza di ogni dato di mercato (docs/03). */
-export type EvidenceStatus = 'observed' | 'estimated' | 'imported' | 'demo' | 'missing';
+export type EvidenceStatus = 'observed' | 'estimated' | 'imported' | 'ai_estimate' | 'demo' | 'missing';
 
 export interface Metric {
   value: number | null;

@@ -136,3 +136,21 @@ La PRIMA immagine è la NOSTRA copertina da valutare.${i.hasCompetitors ? ' Le a
 ${i.feedback.trim() ? `Commento dell'autore: ${i.feedback.trim()}\n` : ''}
 Compito: dai un verdetto sintetico e onesto (verdict), dì se si distingue fra i concorrenti (standsOut) e se il titolo si legge in miniatura (readability), elenca i punti di forza e i problemi concreti, poi proponi UN concept migliorato (improvedConcept) che risolve i problemi: stesso formato dei concept (layout, artId del catalogo oppure customArtPrompt, palette, font, righe del titolo, ecc.). Se la copertina va già bene, migliora solo i dettagli e dillo. Sono ipotesi, non previsioni di vendita.`;
 }
+
+export function nicheScorePrompt(i: { items: { id: string; keyword: string; buyerPersona: string; category: string; marketplace: string; secondaryKeywords: string[]; notes: string }[]; language: string }): string {
+  const list = i.items.map((n, k) => `${k + 1}. id=${n.id} | keyword: ${n.keyword} | mercato: ${n.marketplace} | pubblico: ${n.buyerPersona || 'n/d'} | categoria: ${n.category || 'n/d'} | keyword secondarie: ${n.secondaryKeywords.join(', ') || 'n/d'}${n.notes ? ` | note: ${n.notes}` : ''}`).join('\n');
+  return `Valuta queste ipotesi di nicchia per libri su Amazon KDP (lingua del libro: ${i.language}).
+
+${list}
+
+IMPORTANTE: NON hai accesso a dati di mercato in tempo reale. Fornisci un GIUDIZIO QUALITATIVO da 0 a 100 per ciascuno dei 5 segnali, basato solo sulle tue conoscenze generali del mercato dei libri e della domanda dei lettori. NON citare volumi di ricerca, BSR, vendite, prezzi reali, numeri di recensioni o statistiche: non puoi conoscerli. Se sei incerto, resta vicino a 50 e dillo nel "perché".
+Segnali (tutti 0-100):
+- demand: quanto è probabile che esista un bisogno diffuso e continuativo per questo argomento (100 = bisogno molto diffuso).
+- competition: quanto è SATURA e difficile la nicchia (100 = molto affollata, dominata da editori/autori noti). Attenzione: valore ALTO = competizione alta = peggiore.
+- trend: stabilità o crescita attesa dell'interesse nel tempo, tenendo conto della stagionalità (100 = in crescita/stabile tutto l'anno).
+- unitEconomics: potenziale di margine per un libro cartaceo/eBook di questo tipo (prezzo tipico del formato, costo di stampa per numero di pagine, necessità di pubblicità) (100 = margine facile).
+- differentiation: quanto è possibile distinguersi con un angolo editoriale originale e accurato, senza rischi di competenze mediche/legali/finanziarie non verificabili (100 = molto differenziabile e a basso rischio).
+Per ogni segnale scrivi "why": una frase onesta sul ragionamento e sull'incertezza.
+Per ogni nicchia aggiungi: risks (2-4 rischi concreti, es. temi sensibili che richiedono revisione di un professionista), verifyChecklist (3-5 cose da verificare a mano su Amazon prima di investire: es. quanti libri recenti con molte recensioni, prezzi tipici, copertine dominanti, se ci sono libri in pagina uno con poche recensioni), summary (2 frasi, con il limite dichiarato: giudizio non basato su dati reali).
+Mantieni gli id esatti forniti. Niente promesse di vendite o guadagni.`;
+}

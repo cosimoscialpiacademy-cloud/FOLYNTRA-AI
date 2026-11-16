@@ -1,16 +1,17 @@
 'use client';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Sparkles, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 import { Badge, Button, Card, CardTitle, Field, Input, Notice, Select, Textarea, useDebouncedSave, useToast } from '@/components/ui';
 import { createProject } from '@/lib/defaults';
-import { logActivity } from '@/lib/generation';
+import { logActivity, recordCost } from '@/lib/generation';
 import { paperbackRoyalty } from '@/lib/kdp/royalty';
 import { MARKETPLACES } from '@/lib/kdp/specs';
+import { estimateNiches } from '@/lib/niche/ai-estimate';
 import { DEMO_NOTICE } from '@/lib/niche/demo';
 import { SIGNALS, STATUS_LABEL, emptySignals, estimateSignalsFromCompetitors, evaluateNiche, summarizeCompetitors } from '@/lib/niche/engine';
-import { useStore } from '@/lib/store/context';
+import { useApp, useStore } from '@/lib/store/context';
 import type { Competitor, EvidenceStatus, Marketplace, Niche, SignalKey } from '@/lib/types';
 import { simulateProfit } from '@/lib/unit-economics';
 import { formatDate, formatMoney, nowIso, uid } from '@/lib/utils';
@@ -44,6 +45,23 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
   const m = MARKETPLACES[draft.marketplace];
   const summary = summarizeCompetitors(draft.competitors);
   const set = (patch: Partial<Niche>) => setDraft((d) => ({ ...d, ...patch }));
+  const { getToken, status } = useApp();
+  const [estimatingAi, setEstimatingAi] = useState(false);
+
+  /** Riempie solo i segnali mancanti con una stima IA dichiarata: non tocca dati osservati/importati/manuali. */
+  async function estimateWithAi() {
+    setEstimatingAi(true);
+    try {
+      const { updated, done } = await estimateNiches([draft], { token: await getToken(), budgetUsd: status?.ai.maxUsdPerBook ?? 20, language: MARKETPLACES[draft.marketplace].language });
+      setDraft(updated[0]);
+      await recordCost(store, null, `Stima IA nicchia: ${draft.keyword}`, done);
+      toast('Stima IA applicata ai segnali mancanti. Affidabilità bassa: verifica su Amazon.', 'ok');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Stima IA non riuscita.', 'bad');
+    } finally {
+      setEstimatingAi(false);
+    }
+  }
 
   /* --- concorrenti --- */
   const [comp, setComp] = useState({ title: '', asin: '', price: '', reviews: '', rating: '', bsr: '', pages: '', verified: false });
@@ -149,7 +167,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
       </Card>
 
       <Card>
-        <CardTitle>Segnali e provenienza</CardTitle>
+        <CardTitle action={!draft.demoOnly && <Button variant="gold" size="sm" loading={estimatingAi} disabled={status?.ai.mode === 'mock'} title={status?.ai.mode === 'mock' ? 'Serve l’AI collegata' : undefined} onClick={() => void estimateWithAi()}><Sparkles className="size-4" aria-hidden /> Stima con IA</Button>}>Segnali e provenienza</CardTitle>
         <p className="mb-3 text-sm text-slate2">Opportunità = 0,30·Domanda + 0,25·(100 − Competizione) + 0,15·Trend + 0,20·Economia + 0,10·Differenziazione. Lascia vuoto ciò che non sai: non viene inventato alcun numero.</p>
         <div className="space-y-3">
           {SIGNALS.map((s) => {
@@ -159,7 +177,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
               <div key={s.key} className="rounded-lg border border-line p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-medium text-ink">{s.label} <span className="text-xs font-normal text-slate2">peso {Math.round(s.weight * 100)}%{s.inverted ? ' · invertito' : ''}</span></p>
-                  <Badge tone={metric.status === 'demo' ? 'demo' : metric.status === 'missing' ? 'bad' : metric.status === 'observed' ? 'ok' : 'gold'}>{STATUS_LABEL[metric.status]}</Badge>
+                  <Badge tone={metric.status === 'demo' ? 'demo' : metric.status === 'missing' ? 'bad' : metric.status === 'observed' ? 'ok' : metric.status === 'ai_estimate' ? 'warn' : 'gold'}>{STATUS_LABEL[metric.status]}</Badge>
                 </div>
                 <p className="mt-0.5 text-xs text-slate2">{s.help}</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-[6rem_9rem_1fr_10rem]">
@@ -169,6 +187,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
                       <Select id={id} disabled={draft.demoOnly || metric.status === 'missing'} value={metric.status} onChange={(e) => setSignal(s.key, { status: e.target.value as EvidenceStatus })}>
                         {metric.status === 'missing' && <option value="missing">Mancante</option>}
                         {metric.status === 'demo' && <option value="demo">DEMO</option>}
+                        {metric.status === 'ai_estimate' && <option value="ai_estimate">Stima IA</option>}
                         <option value="observed">Osservato</option>
                         <option value="estimated">Stimato</option>
                         <option value="imported">Importato</option>
