@@ -14,6 +14,8 @@ export interface CoverArtItem {
   palette: CoverSpec['palette'];
   /** Generi adatti (solo indicazione). */
   suits: string;
+  /** Layout in cui l'immagine rende meglio (es. soggetto al centro: «vetrina»). */
+  bestTemplate?: 'immersiva' | 'cornice' | 'vetrina';
 }
 
 export const COVER_ART: CoverArtItem[] = [
@@ -28,6 +30,9 @@ export const COVER_ART: CoverArtItem[] = [
   { id: 'legno-erbe', name: 'Legno ed erbe', tone: 'dark', palette: { background: '#2A1A0E', accent: '#F2C98A', text: '#FFF6E8' }, suits: 'ricettari, cucina, casa' },
   { id: 'neon-tech', name: 'Linee neon', tone: 'dark', palette: { background: '#050814', accent: '#00E5FF', text: '#F5F7FA' }, suits: 'tecnologia, IA, digitale' },
   { id: 'pastello', name: 'Pastello sereno', tone: 'light', palette: { background: '#FBF3EE', accent: '#7C55C9', text: '#2A2340' }, suits: 'benessere, famiglia, bambini' },
+  { id: 'piatto-bilanciato', name: 'Piatto bilanciato (dall’alto)', tone: 'light', palette: { background: '#F1EDE3', accent: '#3E7A4F', text: '#1F2A22' }, suits: 'ricettari salutari, dieta, cucina per una persona', bestTemplate: 'vetrina' },
+  { id: 'tavola-per-uno', name: 'Tavola calda per una persona', tone: 'dark', palette: { background: '#1A110A', accent: '#F2C98A', text: '#FFF6E8' }, suits: 'ricettari caldi, comfort food, cucina per uno', bestTemplate: 'immersiva' },
+  { id: 'icone-salvia', name: 'Icone pulite in verde salvia', tone: 'light', palette: { background: '#F4EEDD', accent: '#4F7149', text: '#243322' }, suits: 'meal prep, piani alimentari, organizzazione', bestTemplate: 'vetrina' },
   { id: 'inchiostro', name: 'Inchiostro', tone: 'light', palette: { background: '#F4EDE0', accent: '#B3261E', text: '#14110F' }, suits: 'letteratura, storia, filosofia' },
 ];
 

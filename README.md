@@ -117,3 +117,6 @@ Non ancora verificato dal vivo su Railway: la generazione del PDF con Chromium n
 2. In Settings → Networking: «Generate Domain» con la porta indicata dai log (`Local: http://localhost:<porta>`).
 3. Le variabili della tabella sopra. Costi: Railway è a consumo; controlla il piano sul loro sito.
 4. Ogni push sul branch ridistribuisce da solo.
+
+### Copertine: sfondi su misura ed etichette
+Nel tab Copertina l'agente propone concept con sfondo personalizzato (copia il prompt in ChatGPT, carica l'immagine) e etichette (fascia bonus, sigillo, invito). Elenca nel campo «bonus» solo contenuti reali del libro; poi conferma in Studio → «Etichette sulla copertina». Frasi come bestseller, premi, prezzi o promesse di salute sono bloccate dal QA.

@@ -125,7 +125,7 @@ export function mockCoverStrategy(i: { currentCover: { title: string }; catalog:
   const concept = (name: string, template: CoverConcept['template'], artId: string, bg: string, accent: string, text: string, font: CoverConcept['titleFont']): CoverConcept => ({
     name: `${tag} ${name}`, rationale: `${tag} Motivazione segnaposto: serve la chiave AI per un'analisi vera.`, standOut: `${tag} Nessuna analisi dei concorrenti eseguita.`,
     template, artId, customArtPrompt: '', palette: { background: bg, accent, text }, titleFont: font, titleLines: (i.currentCover.title || 'Titolo').split(' ').slice(0, 4),
-    taglineSuggestion: '', thumbnailTest: `${tag} Riduci la copertina a 100 px e controlla che il titolo si legga.`, risks: `${tag} Concept non basato su dati.`,
+    taglineSuggestion: '', thumbnailTest: `${tag} Riduci la copertina a 100 px e controlla che il titolo si legga.`, risks: `${tag} Concept non basato su dati.`, badges: [],
   });
   return {
     marketReading: { dominantStyles: [`${tag} Analisi non eseguita`], colorPatterns: [`${tag} Analisi non eseguita`], typographyPatterns: [`${tag} Analisi non eseguita`], gaps: [`${tag} Analisi non eseguita`] },

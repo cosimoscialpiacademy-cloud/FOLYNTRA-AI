@@ -7,6 +7,8 @@ const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 export const CoverSchema = z.object({
       template: z.enum(['classico', 'moderno', 'editoriale', 'immersiva', 'cornice', 'vetrina']), palette: z.object({ background: color, accent: color, text: color }),
       titleFont: z.enum(['Playfair Display', 'Oswald', 'EB Garamond', 'Montserrat']),
+      badges: z.array(z.object({ kind: z.enum(['banner', 'seal', 'cta']), text: s(40), subtext: s(24) })).max(3).optional(),
+      badgesConfirmed: z.boolean().optional(),
       art: z.object({ id: z.string().regex(/^[a-z0-9-]{1,40}$/).nullable(), dataUrl: z.string().regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/).max(3_000_000).nullable(), aiGenerated: z.boolean(), dim: z.number().min(0).max(1) }).nullable().optional(), title: s(300), subtitle: s(400), author: s(200), tagline: s(200), backText: s(3000), seed: z.number().int().min(0).max(1_000_000),
     });
 

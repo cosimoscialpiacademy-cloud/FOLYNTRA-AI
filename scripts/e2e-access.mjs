@@ -131,11 +131,11 @@ try {
     return `opportunità ${score}% · affidabilità ${conf}% · copertura ${cov}% · 2 chiamate`;
   });
 
-  await step('Dati reali (Keepa) dal dettaglio nicchia: concorrenti e segnali importati, affidabilità sopra il 30% delle sole stime IA', async () => {
+  await step('Dati reali (Amazon) dal dettaglio nicchia: concorrenti e segnali importati, affidabilità sopra il 30% delle sole stime IA', async () => {
     const row = page.locator('tr', { hasText: 'Idea reale di prova 1' });
     await row.getByRole('button', { name: 'Apri' }).click();
-    await page.getByRole('button', { name: /Dati reali \(Keepa\)/ }).click();
-    await page.getByText(/Dati reali importati da Keepa \(3 libri\)/).waitFor({ timeout: 20000 });
+    await page.getByRole('button', { name: /Dati reali \(Amazon\)/ }).click();
+    await page.getByText(/Dati reali importati da Amazon \(3 libri, via Keepa\)/).waitFor({ timeout: 20000 });
     await page.getByText('Libro di prova BTEST00001').first().waitFor({ timeout: 10000 });
     await page.waitForTimeout(1800); // salvataggio ritardato
     const cells = (await row.innerText()).replace(/\s+/g, ' ');

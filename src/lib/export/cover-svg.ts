@@ -26,6 +26,23 @@ function titleSize(title: string, width: number, base: number, charFactor: numbe
   return Math.max(base * 0.34, Math.min(base, byWord, byLength));
 }
 
+/** Corpo del titolo che sta davvero nel riquadro: stima le righe (a capo per parole) e riduce finché titolo+sottotitolo entrano. */
+function fitTitle(title: string, sub: string, width: number, height: number, base: number, subPx: number, lh: number, cf: number): number {
+  const lines = (txt: string, px: number, f: number) => {
+    const per = Math.max(4, Math.floor(width / (px * f)));
+    let n = 1, cur = 0;
+    for (const w of txt.split(/\s+/)) {
+      const add = (cur ? 1 : 0) + w.length;
+      if (cur && cur + add > per) { n++; cur = w.length; } else cur += add;
+    }
+    return n;
+  };
+  const subH = sub ? lines(sub, subPx, 0.42) * subPx * 1.3 + subPx * 0.8 : 0;
+  let fs = base;
+  while (fs > base * 0.36 && lines(title, fs, cf) * fs * lh + subH > height) fs *= 0.94;
+  return fs;
+}
+
 function fo(x: number, y: number, w: number, h: number, style: string, html: string): string {
   return `<foreignObject x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:100%;height:100%;display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden;${style}">${html}</div></foreignObject>`;
 }
@@ -54,6 +71,49 @@ function artImage(href: string | null, x: number, y: number, w: number, h: numbe
     : `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" fill="${fallback}"/>`;
 }
 
+
+/** Luminanza relativa (0-1) di un colore #rrggbb: serve a scegliere testo chiaro o scuro sopra un colore pieno. */
+function luminance(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  const f = (c: number) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * f((n >> 16) & 255) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255);
+}
+const onColor = (bg: string) => (luminance(bg) > 0.42 ? '#0b1220' : '#ffffff');
+
+function badgeSet(spec: CoverSpec) {
+  const list = spec.badges ?? [];
+  const pick = (k: 'banner' | 'seal' | 'cta') => list.find((b) => b.kind === k && b.text.trim());
+  return { banner: pick('banner'), seal: pick('seal'), cta: pick('cta') };
+}
+
+/** Fascia a tutta larghezza (si prolunga a destra nell'abbondanza); il testo resta dentro i margini di sicurezza. */
+function bannerSvg(text: string, y: number, w: number, e: number, m: number, u: number, accent: string): string {
+  const h = 30 * u;
+  const fs = Math.min(13 * u, ((w - 2 * m) / Math.max(text.length, 10)) * 1.55);
+  return `<rect x="0" y="${y.toFixed(1)}" width="${(w + e).toFixed(1)}" height="${h.toFixed(1)}" fill="${accent}"/>
+${fo(m, y, w - 2 * m, h, `justify-content:center;align-items:center;text-align:center;color:${onColor(accent)};`, `<div style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:${fs.toFixed(1)}px;letter-spacing:${0.9 * u}px;text-transform:uppercase;white-space:nowrap;">${t(text)}</div>`)}`;
+}
+
+/** Sigillo circolare tipo «bollino» con numero e parola. */
+function sealSvg(main: string, sub: string, cx: number, cy: number, r: number, u: number, accent: string): string {
+  const fg = onColor(accent);
+  const fs = (main.length <= 3 ? 27 : main.length <= 4 ? 22 : 17) * u;
+  return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${accent}" stroke="${fg}" stroke-opacity="0.9" stroke-width="${1.6 * u}"/>
+<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(r - 5 * u).toFixed(1)}" fill="none" stroke="${fg}" stroke-opacity="0.55" stroke-width="${1 * u}" stroke-dasharray="${2.4 * u} ${2.4 * u}"/>
+${fo(cx - r, cy - r, 2 * r, 2 * r, `justify-content:center;align-items:center;text-align:center;color:${fg};`, `<div style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:${fs.toFixed(1)}px;line-height:1;">${t(main)}</div>${sub ? `<div style="font-family:'Montserrat',sans-serif;font-weight:700;font-size:${(9 * u).toFixed(1)}px;letter-spacing:${1.1 * u}px;margin-top:${3 * u}px;text-transform:uppercase;line-height:1.1;">${t(sub)}</div>` : ''}`)}`;
+}
+
+/** Invito all'azione: pillola piena sul fronte. */
+function ctaSvg(text: string, x: number, y: number, w: number, u: number, fill: string): string {
+  const h = 28 * u;
+  const fs = Math.min(12.5 * u, (w / Math.max(text.length, 8)) * 1.5);
+  return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="${h / 2}" fill="${fill}"/>
+${fo(x, y, w, h, `justify-content:center;align-items:center;text-align:center;color:${onColor(fill)};`, `<div style="font-family:'Montserrat',sans-serif;font-weight:800;font-size:${fs.toFixed(1)}px;letter-spacing:${1.2 * u}px;text-transform:uppercase;white-space:nowrap;">${t(text)}</div>`)}`;
+}
+
 /** Layout con immagine: immersiva (titolo in basso su velatura), cornice (targa centrale) e vetrina (immagine sopra, pannello sotto). */
 function artFront(spec: CoverSpec, w: number, h: number, opts: PanelOpts): string {
   const { background: bg, accent, text } = spec.palette;
@@ -70,10 +130,14 @@ function artFront(spec: CoverSpec, w: number, h: number, opts: PanelOpts): strin
   const wt = weightOf(spec);
   const gid = `g-${spec.template}-${bg.slice(1)}-${Math.round(dim * 100)}`;
 
+  const bd = badgeSet(spec);
+  const ctaW = bd.cta ? Math.min(w - 2 * m, Math.max(150 * u, (bd.cta.text.length * 8.2 + 44) * u)) : 0;
+
   if (spec.template === 'immersiva') {
-    const fs = titleSize(title, w - 2 * m, 58 * u, 0.54);
     const top = Math.min(0.9, 0.15 + dim * 0.6);
     const bottom = Math.min(0.97, 0.45 + dim * 0.55);
+    const titleTop = h * (bd.cta ? 0.55 : 0.6);
+    const fs = Math.min(titleSize(title, w - 2 * m, (bd.cta ? 46 : 58) * u, 0.54), fitTitle(title, sub, w - 2 * m, h - m - titleTop - 16 * u - (bd.cta ? 40 * u : 0), (bd.cta ? 46 : 58) * u, (bd.cta ? 15 : 17.5) * u, 1.08, 0.54));
     return `
 <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
   <stop offset="0" stop-color="${bg}" stop-opacity="${top.toFixed(2)}"/><stop offset="0.24" stop-color="${bg}" stop-opacity="0"/>
@@ -83,14 +147,17 @@ ${img(0, 0, w, h)}
 <rect x="0" y="${-e}" width="${w + e}" height="${h + 2 * e}" fill="url(#${gid})"/>
 ${fo(m, m - 4 * u, w - 2 * m, 36 * u, `justify-content:center;align-items:center;text-align:center;color:${accent};`,
   `<div style="font-family:'Inter',sans-serif;font-weight:700;font-size:${11.5 * u}px;letter-spacing:${3.2 * u}px;text-transform:uppercase;padding:${5 * u}px ${14 * u}px;background:${rgba(bg, 0.72)};">${t(author)}</div>`)}
-<rect x="${(w - 44 * u) / 2}" y="${h * 0.6}" width="${44 * u}" height="${2.4 * u}" fill="${accent}"/>
-${fo(m, h * 0.6 + 16 * u, w - 2 * m, h * 0.4 - m - 16 * u, `justify-content:flex-start;align-items:center;text-align:center;color:${text};`,
+${bd.banner ? bannerSvg(bd.banner.text, m + 38 * u, w, e, m, u, accent) : ''}
+${bd.seal ? sealSvg(bd.seal.text, bd.seal.subtext, w - m - 44 * u, h * 0.3, 44 * u, u, accent) : ''}
+<rect x="${(w - 44 * u) / 2}" y="${titleTop}" width="${44 * u}" height="${2.4 * u}" fill="${accent}"/>
+${fo(m, titleTop + 16 * u, w - 2 * m, h - m - titleTop - 16 * u - (bd.cta ? 40 * u : 0), `justify-content:flex-start;align-items:center;text-align:center;color:${text};`,
   `<div style="font-family:'${spec.titleFont}',serif;font-weight:${wt};font-size:${fs.toFixed(1)}px;line-height:1.08;text-wrap:balance;text-shadow:0 ${2 * u}px ${14 * u}px rgba(0,0,0,0.25);">${t(title)}</div>
-   ${sub ? `<div style="font-family:'EB Garamond',serif;font-style:italic;font-size:${17.5 * u}px;line-height:1.3;margin-top:${12 * u}px;opacity:0.94;">${t(sub)}</div>` : ''}`)}`;
+   ${sub ? `<div style="font-family:'EB Garamond',serif;font-style:italic;font-size:${(bd.cta ? 15 : 17.5) * u}px;line-height:1.3;margin-top:${10 * u}px;opacity:0.94;">${t(sub)}</div>` : ''}`)}
+${bd.cta ? ctaSvg(bd.cta.text, (w - ctaW) / 2, h - m - 32 * u, ctaW, u, text) : ''}`;
   }
 
   if (spec.template === 'cornice') {
-    const fs = titleSize(title, w - 2 * m - 50 * u, 46 * u, 0.55);
+    const fs = Math.min(titleSize(title, w - 2 * m - 50 * u, 46 * u, 0.55), fitTitle(title, sub, w - 2 * m - 52 * u, h * 0.34 - 78 * u, 46 * u, 16 * u, 1.14, 0.55));
     const plateA = (0.46 + dim * 0.4).toFixed(2);
     return `
 ${img(0, 0, w, h)}
@@ -103,21 +170,27 @@ ${fo(m + 26 * u, h * 0.3 + 30 * u, w - 2 * m - 52 * u, h * 0.34 - 44 * u, `justi
   `<div style="font-family:'${spec.titleFont}',serif;font-weight:${wt};font-size:${fs.toFixed(1)}px;line-height:1.1;text-wrap:balance;">${t(title)}</div>
    ${sub ? `<div style="font-family:'EB Garamond',serif;font-style:italic;font-size:${16 * u}px;line-height:1.28;margin-top:${10 * u}px;">${t(sub)}</div>` : ''}`)}
 ${fo(m, h - m - 40 * u, w - 2 * m, 30 * u, `justify-content:center;align-items:center;text-align:center;color:${text};`,
-  `<div style="font-family:'Inter',sans-serif;font-weight:600;font-size:${12 * u}px;letter-spacing:${3 * u}px;text-transform:uppercase;padding:${4 * u}px ${12 * u}px;background:${bg};background-clip:padding-box;opacity:0.95;">${t(author)}</div>`)}`;
+  `<div style="font-family:'Inter',sans-serif;font-weight:600;font-size:${12 * u}px;letter-spacing:${3 * u}px;text-transform:uppercase;padding:${4 * u}px ${12 * u}px;background:${bg};background-clip:padding-box;opacity:0.95;">${t(author)}</div>`)}
+${bd.banner ? bannerSvg(bd.banner.text, m + 2 * u, w, e, m, u, accent) : ''}
+${bd.seal ? sealSvg(bd.seal.text, bd.seal.subtext, w - m - 36 * u, h * 0.21, 40 * u, u, accent) : ''}
+${bd.cta ? ctaSvg(bd.cta.text, (w - ctaW) / 2, h * 0.64 + 12 * u, ctaW, u, text) : ''}`;
   }
 
   // vetrina
   const split = 0.62;
-  const fs = titleSize(title, w - 2 * m, 46 * u, 0.55);
+  const fs = Math.min(titleSize(title, w - 2 * m, (bd.cta ? 36 : 46) * u, 0.55), fitTitle(title, sub, w - 2 * m, h * (1 - split) - m - 54 * u - (bd.cta ? 36 * u : 0) - 22 * u, (bd.cta ? 36 : 46) * u, (bd.cta ? 14 : 16.5) * u, 1.08, 0.55));
   return `
 <defs><linearGradient id="${gid}v" x1="0" y1="0" x2="0" y2="1"><stop offset="0.72" stop-color="${bg}" stop-opacity="0"/><stop offset="1" stop-color="${bg}" stop-opacity="${(0.25 + dim * 0.7).toFixed(2)}"/></linearGradient></defs>
 <rect x="0" y="${h * split}" width="${w + e}" height="${h * (1 - split) + e}" fill="${bg}"/>
 ${img(0, 0, w, h * split)}
 <rect x="0" y="${-e}" width="${w + e}" height="${h * split + e}" fill="url(#${gid}v)"/>
+${bd.banner ? bannerSvg(bd.banner.text, m, w, e, m, u, accent) : ''}
+${bd.seal ? sealSvg(bd.seal.text, bd.seal.subtext, w - m - 44 * u, h * split - 62 * u, 44 * u, u, accent) : ''}
 <rect x="${m}" y="${h * split - 5 * u}" width="${64 * u}" height="${10 * u}" fill="${accent}"/>
-${fo(m, h * split + 22 * u, w - 2 * m, h * (1 - split) - m - 54 * u, `justify-content:flex-start;color:${text};`,
+${fo(m, h * split + 22 * u, w - 2 * m, h * (1 - split) - m - 54 * u - (bd.cta ? 36 * u : 0), `justify-content:flex-start;color:${text};`,
   `<div style="font-family:'${spec.titleFont}',serif;font-weight:${wt};font-size:${fs.toFixed(1)}px;line-height:1.08;text-wrap:balance;">${t(title)}</div>
-   ${sub ? `<div style="font-family:'EB Garamond',serif;font-style:italic;font-size:${16.5 * u}px;line-height:1.3;margin-top:${10 * u}px;opacity:0.92;">${t(sub)}</div>` : ''}`)}
+   ${sub ? `<div style="font-family:'EB Garamond',serif;font-style:italic;font-size:${(bd.cta ? 14 : 16.5) * u}px;line-height:1.3;margin-top:${8 * u}px;opacity:0.92;">${t(sub)}</div>` : ''}`)}
+${bd.cta ? ctaSvg(bd.cta.text, m, h - m - 66 * u, ctaW, u, accent) : ''}
 ${fo(m, h - m - 30 * u, w - 2 * m, 30 * u, `justify-content:flex-end;color:${accent};`,
   `<div style="font-family:'Inter',sans-serif;font-weight:700;font-size:${12.5 * u}px;letter-spacing:${3 * u}px;text-transform:uppercase;">${t(author)}</div>`)}`;
 }

@@ -6,12 +6,13 @@ import { Badge, Button, Card, CardTitle, Field, Input, Notice, Select, Textarea,
 import { callExport, downloadBlob } from '@/lib/client-api';
 import { ART_TEMPLATES, COVER_ART, artById, artThumb } from '@/lib/cover-art';
 import { COVER_PRESETS } from '@/lib/defaults';
+import { forbiddenClaim } from '@/lib/kdp/claims';
 import { prepareCoverImage } from '@/lib/image-upload';
 import { frontCoverSvg, fullCoverSvg } from '@/lib/export/cover-svg';
 import { logActivity } from '@/lib/generation';
 import { MIN_PAGES, MIN_PAGES_SPINE_TEXT, TRIM_SIZES, coverGeometry } from '@/lib/kdp/specs';
 import { useApp, useStore } from '@/lib/store/context';
-import type { CoverArt, CoverSpec, LayoutSettings, TrimSizeId } from '@/lib/types';
+import type { CoverArt, CoverBadge, CoverSpec, LayoutSettings, TrimSizeId } from '@/lib/types';
 import { cn, wordCount } from '@/lib/utils';
 import { CoverAgent } from './cover-agent';
 import type { TabProps } from './types';
@@ -38,11 +39,21 @@ export function StudioTab({ project, chapters, niche, update, goTo }: TabProps) 
   const setCover = (patch: Partial<CoverSpec>) => update({ cover: { ...cover, ...patch } });
   /** Le immagini IA vanno dichiarate a KDP: la dichiarazione passa a «generate» senza che l'utente debba ricordarsene. */
   const withAiDeclaration = (art: CoverArt | null) => (art?.aiGenerated && project.kdp.aiImages === 'none' ? { kdp: { ...project.kdp, aiImages: 'generated' as const } } : {});
+  /** Etichette: tre slot fissi (fascia, sigillo, invito). Ogni modifica toglie la conferma «sono vere». */
+  const badgeOf = (k: CoverBadge['kind']) => (cover.badges ?? []).find((b) => b.kind === k);
+  function setBadge(kind: CoverBadge['kind'], patch: Partial<CoverBadge>) {
+    const cur = badgeOf(kind) ?? { kind, text: '', subtext: '' };
+    const next = { ...cur, ...patch };
+    const others = (cover.badges ?? []).filter((b) => b.kind !== kind);
+    const list = next.text.trim() || next.subtext.trim() ? [...others, next] : others;
+    const order = { banner: 0, seal: 1, cta: 2 } as const;
+    setCover({ badges: list.sort((a, b) => order[a.kind] - order[b.kind]), badgesConfirmed: false });
+  }
   function chooseArt(id: string) {
     const item = artById(id);
     if (!item) return;
     const art: CoverArt = { id, dataUrl: null, aiGenerated: true, dim: cover.art?.dim ?? 0.55 };
-    update({ cover: { ...cover, art, palette: { ...item.palette } }, ...withAiDeclaration(art) });
+    update({ cover: { ...cover, art, palette: { ...item.palette }, ...(item.bestTemplate && !ART_TEMPLATES.includes(cover.template) ? { template: item.bestTemplate } : {}) }, ...withAiDeclaration(art) });
   }
   function choosePreset(p: (typeof COVER_PRESETS)[number]) {
     const wantsArt = ART_TEMPLATES.includes(p.template);
@@ -92,7 +103,7 @@ export function StudioTab({ project, chapters, niche, update, goTo }: TabProps) 
 
   return (
     <div className="space-y-4">
-      <CoverAgent project={project} niche={niche} update={update} />
+      <CoverAgent project={project} niche={niche} chapters={chapters} update={update} />
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <Card className="order-2 lg:order-1">
           <CardTitle>Copertina</CardTitle>
@@ -139,6 +150,24 @@ export function StudioTab({ project, chapters, niche, update, goTo }: TabProps) 
               <p className="mt-2 text-xs text-slate2">Per la stampa servono immagini di almeno ~1400×2100 px (6×9 in a ~230 dpi). Se l’immagine è tua, garantisci di averne i diritti.</p>
             </div>
           )}
+
+          <div className="mt-4 rounded-xl border border-line bg-card2 p-3 sm:p-4">
+            <p className="text-sm font-semibold text-ink">Etichette sulla copertina: bonus, sigillo e invito</p>
+            <p className="mt-0.5 text-xs text-slate2">Come sulle copertine che vendono: una <strong className="text-ink">fascia</strong> con il bonus, un <strong className="text-ink">sigillo</strong> con un numero reale e un breve <strong className="text-ink">invito</strong>. Compaiono con i layout con immagine (Immersiva, Cornice, Vetrina). Scrivi solo cose <strong className="text-ink">vere e presenti nel libro</strong>; Amazon rifiuta classifiche, premi, prezzi, «gratis» e promesse di salute.</p>
+            {!isArtTemplate && <Notice tone="warn" className="mt-2">Con questo layout le etichette non vengono stampate: scegli Immersiva, Cornice o Vetrina.</Notice>}
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Field label="Fascia (bonus o contenuto extra)" hint="Max 38 caratteri. Es. «INCLUDES 7-DAY MEAL PLAN»" className="sm:col-span-2">{(id) => <Input id={id} maxLength={38} value={badgeOf('banner')?.text ?? ''} onChange={(e) => setBadge('banner', { text: e.target.value })} />}</Field>
+              <Field label="Sigillo: numero" hint="Max 6. Es. «100+» (solo se è vero)">{(id) => <Input id={id} maxLength={6} value={badgeOf('seal')?.text ?? ''} onChange={(e) => setBadge('seal', { text: e.target.value })} />}</Field>
+              <Field label="Sigillo: parola" hint="Max 14. Es. «RECIPES»">{(id) => <Input id={id} maxLength={14} value={badgeOf('seal')?.subtext ?? ''} onChange={(e) => setBadge('seal', { subtext: e.target.value })} />}</Field>
+              <Field label="Invito all'azione" hint="Max 28. Es. «START COOKING TODAY»" className="sm:col-span-2">{(id) => <Input id={id} maxLength={28} value={badgeOf('cta')?.text ?? ''} onChange={(e) => setBadge('cta', { text: e.target.value })} />}</Field>
+            </div>
+            {(cover.badges ?? []).map((b) => ({ b, why: forbiddenClaim(`${b.text} ${b.subtext}`) })).filter((x) => x.why).map((x) => (
+              <Notice key={x.b.kind} tone="bad" className="mt-2">«{x.b.text}» contiene {x.why}: Amazon può rifiutare la copertina. Riscrivila.</Notice>
+            ))}
+            {(cover.badges?.length ?? 0) > 0 && (
+              <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5 size-4 accent-cyan" checked={cover.badgesConfirmed === true} onChange={(e) => setCover({ badgesConfirmed: e.target.checked })} /> Confermo che tutto ciò che è scritto nelle etichette è vero ed è presente nel libro (senza questa conferma il kit non risulta «pronto»).</label>
+            )}
+          </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Titolo in copertina" className="sm:col-span-2">{(id) => <Input id={id} value={cover.title} onChange={(e) => setCover({ title: e.target.value })} />}</Field>

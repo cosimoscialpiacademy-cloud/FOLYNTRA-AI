@@ -87,3 +87,58 @@ describe('copertine con immagine', () => {
     expect(await zip.file('diritti.md')!.async('string')).toMatch(/GPT Image 2\.6/);
   });
 });
+
+describe('etichette di copertina (bonus, sigillo, invito)', () => {
+  const badges = [
+    { kind: 'banner' as const, text: 'Includes 7-day meal plan', subtext: '' },
+    { kind: 'seal' as const, text: '30+', subtext: 'Recipes' },
+    { kind: 'cta' as const, text: 'Start cooking today', subtext: '' },
+  ];
+  const cook = (artId: string, template: CoverSpec['template'], over: Partial<CoverSpec> = {}): CoverSpec => ({
+    ...spec(artId, template, 'Montserrat', 0.5), title: 'Diabetic Friendly Cooking for One', subtitle: 'Simple single-serving recipes and a plate-method guide', author: 'Anna Verdi', tagline: '', badges, badgesConfirmed: true, ...over,
+  });
+
+  it('disegna fascia, sigillo e invito nei tre layout e salva un foglio di controllo', async () => {
+    mkdirSync(OUT, { recursive: true });
+    const jobs: [string, CoverSpec][] = [
+      ['piatto-bilanciato', 'vetrina'], ['tavola-per-uno', 'immersiva'], ['icone-salvia', 'cornice'], ['piatto-bilanciato', 'immersiva'], ['tavola-per-uno', 'cornice'], ['icone-salvia', 'vetrina'],
+    ].map(([id, t]) => [`${id}-${t}`, cook(id, t as CoverSpec['template'], { palette: artById(id)!.palette })]);
+    const tiles: Buffer[] = [];
+    await withBrowser(async (b) => {
+      for (const [, s] of jobs) tiles.push(await sharp(await renderEbookCoverJpg(b, s)).resize(400, 640).png().toBuffer());
+      // anche in miniatura da risultati di ricerca (110 px) per giudicare la leggibilità
+      for (const [, s] of jobs.slice(0, 3)) tiles.push(await sharp(await renderEbookCoverJpg(b, s)).resize(110, 176).png().toBuffer());
+    });
+    const sheet = await sharp({ create: { width: 3 * 410 + 10, height: 2 * 650 + 200, channels: 3, background: '#e9e6df' } })
+      .composite([
+        ...tiles.slice(0, 6).map((input, i) => ({ input, left: 10 + (i % 3) * 410, top: 10 + Math.floor(i / 3) * 650 })),
+        ...tiles.slice(6).map((input, i) => ({ input, left: 10 + i * 130, top: 1310 })),
+      ]).png().toBuffer();
+    writeFileSync(path.join(OUT, 'etichette.png'), sheet);
+    expect(tiles).toHaveLength(9);
+  });
+
+  it('QA: frasi vietate e mancata conferma bloccano il kit; etichette vere e confermate passano', async () => {
+    const run = async (cover: CoverSpec) => {
+      const bundle = sampleBundle({ chapters: 6, real: true });
+      bundle.project.cover = cover;
+      bundle.project.kdp.aiImages = 'generated';
+      return withBrowser((b) => buildKit(bundle, b, NOW));
+    };
+    const ok = await run(cook('piatto-bilanciato', 'vetrina'));
+    expect(ok.checks.find((c) => c.id === 'copertina.etichette.vietate')).toMatchObject({ result: 'ok' });
+    expect(ok.checks.find((c) => c.id === 'copertina.etichette.vere')).toMatchObject({ result: 'ok' });
+    expect(ok.kdpReady).toBe(true);
+
+    const unconfirmed = await run(cook('piatto-bilanciato', 'vetrina', { badgesConfirmed: false }));
+    expect(unconfirmed.checks.find((c) => c.id === 'copertina.etichette.vere')).toMatchObject({ result: 'fallito', severity: 'critico' });
+    expect(unconfirmed.kdpReady).toBe(false);
+
+    const bad = await run(cook('piatto-bilanciato', 'vetrina', { badges: [{ kind: 'banner', text: '#1 Bestseller — lowers blood sugar', subtext: '' }] }));
+    expect(bad.checks.find((c) => c.id === 'copertina.etichette.vietate')).toMatchObject({ result: 'fallito', severity: 'critico' });
+    expect(bad.kdpReady).toBe(false);
+
+    const wrongLayout = await run(cook('piatto-bilanciato', 'classico'));
+    expect(wrongLayout.checks.find((c) => c.id === 'copertina.etichette.layout')).toMatchObject({ result: 'fallito', severity: 'avviso' });
+  });
+});

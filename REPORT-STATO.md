@@ -181,3 +181,10 @@ Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso dem
 - Eseguito: typecheck, lint, **113/113** test.
 - NB: la chiave è comparsa in uno screenshot in chat: va rigenerata da «Manage API key» di SerpApi e aggiornata su Railway.
 - SerpApi è un servizio di terzi che legge Amazon: scelta dell'autore, rischio dichiarato.
+
+## Copertine su misura + etichette commerciali (verificato)
+- L'agente propone **sfondi personalizzati** per la nicchia (prompt in inglese da incollare in ChatGPT, poi si carica l'immagine) e solo se davvero migliore usa il catalogo; aggiunti 3 sfondi dedicati a nicchie "cucina/dieta" (`piatto-bilanciato`, `tavola-per-uno`, `icone-salvia`).
+- **Etichette**: fascia bonus, sigillo (es. «30+ RECIPES») e invito all'azione, nei layout immersiva/cornice/vetrina; modificabili in Studio («Etichette sulla copertina»). Il titolo si adatta allo spazio (anche titoli lunghi, verificato a vista su foglio di controllo `test-output/cover-art/etichette.png`).
+- **QA**: frasi vietate (bestseller/#1, premi, recensioni/stelle, prezzi/gratis, promesse di salute o garanzie) = blocco critico; le etichette devono essere confermate come vere dall'autore, altrimenti il kit non è «pronto».
+- Test: 139 passati, typecheck/lint/build ok, e2e demo e accesso ok (10 passi).
+- Limiti: la generazione dell'immagine di sfondo resta esterna (ChatGPT/altro); nessuna API immagini a pagamento attivata.

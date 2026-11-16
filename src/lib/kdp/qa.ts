@@ -2,6 +2,7 @@
  * QA del pacchetto KDP. "KDP pronto" richiede che TUTTI i controlli critici
  * siano 'ok': un controllo critico fallito o non eseguito blocca lo stato.
  */
+import { forbiddenClaim } from './claims';
 import { marketingHasMock, marketingPlaceholders } from '../book/marketing';
 import { analyzeManuscript, containsMockText, type TextIssue } from '../book/analysis';
 import type { PdfReport } from '../export/pdf-inspect';
@@ -73,6 +74,14 @@ export function runQa(input: QaInput): { checks: QaCheck[]; kdpReady: boolean; i
   const anyAi = chapters.some((c) => c.aiGenerated);
   add('ia.dichiarazione', 'Dichiarazione IA coerente con il contenuto', 'critico', !(anyAi && project.kdp.aiText === 'none'),
     anyAi && project.kdp.aiText === 'none' ? 'Ci sono capitoli generati da IA ma la dichiarazione indica "nessun testo IA".' : `Testo: ${project.kdp.aiText}; immagini: ${project.kdp.aiImages}; traduzioni: ${project.kdp.aiTranslation}.`);
+  const badges = (project.cover.badges ?? []).filter((b) => b.text.trim());
+  if (badges.length) {
+    const artLayout = ['immersiva', 'cornice', 'vetrina'].includes(project.cover.template);
+    add('copertina.etichette.layout', 'Etichette di copertina visibili con il layout scelto', 'avviso', artLayout, artLayout ? `${badges.length} etichette sul fronte.` : 'Le etichette (fascia, sigillo, invito) compaiono solo con i layout con immagine: con questo layout non vengono stampate.');
+    const bad = badges.map((b) => ({ b, why: forbiddenClaim(`${b.text} ${b.subtext}`) })).filter((x) => x.why);
+    add('copertina.etichette.vietate', 'Etichette senza frasi vietate (classifiche, premi, prezzi, promesse di salute)', 'critico', bad.length === 0, bad.length ? `«${bad[0].b.text}»: contiene ${bad[0].why}. Amazon può rifiutare la copertina; riscrivi l'etichetta.` : 'Nessuna frase vietata rilevata (controllo euristico: resta la tua responsabilità).');
+    add('copertina.etichette.vere', 'Etichette di copertina confermate come vere e presenti nel libro', 'critico', project.cover.badgesConfirmed === true, project.cover.badgesConfirmed === true ? 'Confermato dall’autore.' : 'Conferma nello Studio che bonus e numeri scritti in copertina sono veri e presenti nel libro.');
+  }
   const art = input.coverArt ?? null;
   if (art) {
     const coverWidthIn = TRIM_SIZES[project.layout.trim].widthIn + BLEED_IN;

@@ -99,6 +99,14 @@ export interface LayoutSettings {
 
 export type CoverTemplateId = 'classico' | 'moderno' | 'editoriale' | 'immersiva' | 'cornice' | 'vetrina';
 
+/** Etichetta commerciale sul fronte: fascia (bonus/contenuto), sigillo (numero + parola) o invito all'azione. Solo layout con immagine. */
+export interface CoverBadge {
+  kind: 'banner' | 'seal' | 'cta';
+  text: string;
+  /** Solo per il sigillo: seconda riga (es. «RICETTE» sotto «100+»). */
+  subtext: string;
+}
+
 /** Immagine di copertina: dal catalogo (id) oppure caricata dall'utente (data URL). */
 export interface CoverArt {
   id: string | null;
@@ -120,6 +128,9 @@ export interface CoverSpec {
   backText: string;
   seed: number;
   art?: CoverArt | null;
+  badges?: CoverBadge[];
+  /** L'autore conferma che quanto scritto nelle etichette è vero e presente nel libro. */
+  badgesConfirmed?: boolean;
 }
 
 export interface KdpMeta {
@@ -154,6 +165,8 @@ export interface CompetitorShot {
 export interface CoverBrief {
   competitors: CompetitorShot[];
   notes: string;
+  /** Bonus e contenuti realmente inclusi nel libro (scritti dall'autore): l'agente può usare solo questi per le etichette. */
+  bonuses?: string;
   strategy: CoverStrategyOutput | null;
   strategyIsMock: boolean;
   critique: CoverCritiqueOutput | null;

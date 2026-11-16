@@ -86,6 +86,8 @@ export const CoverConcept = z.object({
   taglineSuggestion: z.string(),
   thumbnailTest: z.string(),
   risks: z.string(),
+  /** Etichette sul fronte (0-3): una fascia, un sigillo, un invito. Testi brevi, veri e nella lingua del libro. */
+  badges: z.array(z.object({ kind: z.enum(['banner', 'seal', 'cta']), text: z.string(), subtext: z.string() })),
 });
 export type CoverConcept = z.infer<typeof CoverConcept>;
 
@@ -119,6 +121,8 @@ export const CoverInput = z.object({
   /** Strategia precedente (JSON) per rielaborarla in base al feedback. */
   previous: z.string().max(12000),
   competitors: z.array(CoverImage).max(6),
+  /** Contenuti reali del libro e bonus dichiarati dall'autore: le etichette possono citare solo questi. */
+  bookFacts: z.string().max(1200),
   catalog: z.array(z.object({ id: z.string().max(40), name: z.string().max(80), tone: z.enum(['dark', 'light']), suits: z.string().max(120) })).max(30),
   currentCover: z.object({ template: z.string().max(20), artId: z.string().max(40), title: z.string().max(300), fontName: z.string().max(40) }),
 });

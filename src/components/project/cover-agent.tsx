@@ -8,22 +8,29 @@ import { ART_TEMPLATES, COVER_ART, artById } from '@/lib/cover-art';
 import { callAi, callCoverImage, callMarket } from '@/lib/client-api';
 import { frontCoverSvg } from '@/lib/export/cover-svg';
 import { briefContext, logActivity, recordCost, spentUsd } from '@/lib/generation';
-import { blobToJpegBase64, prepareCompetitorShot } from '@/lib/image-upload';
+import { blobToJpegBase64, prepareCoverImage, prepareCompetitorShot } from '@/lib/image-upload';
 import { TRIM_SIZES } from '@/lib/kdp/specs';
 import { useApp, useStore } from '@/lib/store/context';
-import type { CompetitorShot, CoverBrief, CoverSpec, Niche } from '@/lib/types';
-import { cn, uid } from '@/lib/utils';
+import type { CompetitorShot, CoverArt, CoverBadge, CoverBrief, CoverSpec, Niche } from '@/lib/types';
+import { cn, uid, wordCount } from '@/lib/utils';
 import type { TabProps } from './types';
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const MAX_SHOTS = 6;
-const EMPTY: CoverBrief = { competitors: [], notes: '', strategy: null, strategyIsMock: false, critique: null, critiqueIsMock: false };
+const EMPTY: CoverBrief = { competitors: [], notes: '', bonuses: '', strategy: null, strategyIsMock: false, critique: null, critiqueIsMock: false };
 
 /** Riassunto testuale della nicchia per l'agente (dati dell'utente: quelli DEMO sono dichiarati tali). */
 function nicheNotes(niche: Niche | null): string {
   if (!niche) return '';
   const comp = niche.competitors.slice(0, 8).map((c) => `- ${c.title}${c.price ? `, ${c.price}` : ''}${c.reviews ? `, ${c.reviews} recensioni` : ''}${c.rating ? `, ${c.rating}★` : ''}${c.pages ? `, ${c.pages} pagine` : ''}${c.verified ? '' : ' (non verificato)'}`).join('\n');
   return [`Nicchia: ${niche.keyword} (${niche.marketplace})${niche.demoOnly ? ' — DATI DEMO, non reali' : ''}`, niche.buyerPersona && `Chi compra: ${niche.buyerPersona}`, niche.category && `Categoria: ${niche.category}`, comp && `Concorrenti:\n${comp}`, niche.differentiationIdeas.length ? `Idee di differenziazione: ${niche.differentiationIdeas.join('; ')}` : ''].filter(Boolean).join('\n');
+}
+
+/** Fatti verificabili sul libro: le etichette in copertina possono citare solo questi (e i bonus dichiarati dall'autore). */
+function bookFacts(project: import('@/lib/types').Project, chapters: import('@/lib/types').Chapter[], bonuses: string): string {
+  const words = chapters.reduce((n, c) => n + wordCount(c.content), 0);
+  const kind = { nonfiction: 'manuale pratico', workbook: 'workbook con esercizi', cookbook: 'ricettario' }[project.kind];
+  return [`Tipo: ${kind}. Capitoli: ${chapters.length}. Parole circa: ${words.toLocaleString('it-IT')}. Lingua: ${project.locale}.`, bonuses.trim() && `Bonus e contenuti extra INCLUSI nel libro, dichiarati dall'autore: ${bonuses.trim().slice(0, 700)}`].filter(Boolean).join('\n');
 }
 
 /** Costruisce la copertina corrispondente a un concept (valida palette e sfondo: i dati dell'IA non si fidano alla cieca). */
@@ -36,12 +43,28 @@ function specFromConcept(base: CoverSpec, c: CoverConcept): CoverSpec {
     template: c.template,
     titleFont: c.titleFont,
     palette: okPalette ? { ...c.palette } : art ? { ...art.palette } : base.palette,
+    badges: cleanBadges(c.badges),
+    badgesConfirmed: false,
     art: isArt ? (art ? { id: art.id, dataUrl: null, aiGenerated: true, dim: base.art?.dim ?? 0.55 } : base.art ?? null) : base.art ?? null,
   };
 }
 
-function ConceptCard({ c, base, index, recommended, onApply, trimW, trimH }: { c: CoverConcept; base: CoverSpec; index: number; recommended: boolean; onApply: () => void; trimW: number; trimH: number }) {
+/** Etichette dell'agente: massimo una per tipo, testi tagliati ai limiti, niente vuoti. */
+function cleanBadges(list: CoverConcept['badges'] | undefined): CoverBadge[] {
+  const limits = { banner: [38, 0], seal: [6, 14], cta: [28, 0] } as const;
+  const out: CoverBadge[] = [];
+  for (const b of list ?? []) {
+    if (out.some((x) => x.kind === b.kind)) continue;
+    const text = b.text.replace(/\s+/g, ' ').trim().slice(0, limits[b.kind][0]);
+    if (!text) continue;
+    out.push({ kind: b.kind, text, subtext: b.kind === 'seal' ? b.subtext.replace(/\s+/g, ' ').trim().slice(0, limits.seal[1]) : '' });
+  }
+  return out.slice(0, 3);
+}
+
+function ConceptCard({ c, base, index, recommended, onApply, onUploadArt, trimW, trimH }: { c: CoverConcept; base: CoverSpec; index: number; recommended: boolean; onApply: () => void; onUploadArt: (file: File | undefined) => void; trimW: number; trimH: number }) {
   const toast = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
   const spec = specFromConcept(base, c);
   const needsCustomArt = ART_TEMPLATES.includes(c.template) && !artById(c.artId);
   return (
@@ -53,23 +76,29 @@ function ConceptCard({ c, base, index, recommended, onApply, trimW, trimH }: { c
       <div className="mx-auto w-full max-w-[11rem] overflow-hidden rounded shadow-lg ring-1 ring-white/10" style={{ aspectRatio: `${trimW}/${trimH}` }} dangerouslySetInnerHTML={{ __html: frontCoverSvg(spec, trimW, trimH) }} />
       <p className="text-xs text-ink/90"><strong>Perché:</strong> {c.rationale}</p>
       <p className="text-xs text-ink/90"><strong>Come si distingue:</strong> {c.standOut}</p>
+      {c.badges.length > 0 && <p className="text-xs text-ink/90"><strong>Etichette:</strong> {c.badges.map((b) => (b.kind === 'seal' ? `sigillo «${b.text} ${b.subtext}»` : b.kind === 'banner' ? `fascia «${b.text}»` : `invito «${b.text}»`)).join(' · ')}</p>}
       {c.titleLines.length > 0 && <p className="text-xs text-slate2"><strong className="text-ink">Titolo su righe:</strong> {c.titleLines.join(' / ')}</p>}
       <p className="text-xs text-slate2"><strong className="text-ink">Prova in miniatura:</strong> {c.thumbnailTest}</p>
       <p className="text-xs text-warn"><strong>Rischi:</strong> {c.risks}</p>
       {c.customArtPrompt && (
         <div className="rounded-lg border border-line bg-card p-2 text-xs text-slate2">
-          <p className="mb-1 font-semibold text-ink">Sfondo su misura (da generare)</p>
-          <p className="break-words">{c.customArtPrompt}</p>
-          <Button size="sm" variant="outline" className="mt-2" onClick={() => void navigator.clipboard.writeText(c.customArtPrompt).then(() => toast('Prompt copiato: incollalo nel generatore di immagini, poi carica il risultato.', 'ok'), () => toast('Copia non riuscita.', 'bad'))}><Copy className="size-4" aria-hidden /> Copia prompt</Button>
+          <p className="mb-1 font-semibold text-ink">Sfondo su misura per la tua nicchia</p>
+          <ol className="mb-2 list-decimal space-y-0.5 pl-4"><li>Copia il prompt e incollalo in <strong className="text-ink">ChatGPT</strong> (o un altro generatore di immagini).</li><li>Scarica l’immagine che ottieni.</li><li>Caricala qui: applico il concept con il tuo sfondo.</li></ol>
+          <p className="max-h-28 overflow-y-auto break-words rounded bg-white/5 p-2">{c.customArtPrompt}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => void navigator.clipboard.writeText(c.customArtPrompt).then(() => toast('Prompt copiato: incollalo in ChatGPT, scarica l’immagine e caricala qui.', 'ok'), () => toast('Copia non riuscita.', 'bad'))}><Copy className="size-4" aria-hidden /> Copia prompt</Button>
+            <Button size="sm" variant="primary" onClick={() => fileRef.current?.click()}><ImagePlus className="size-4" aria-hidden /> Carica l’immagine e applica</Button>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" aria-label="Carica lo sfondo generato" onChange={(e) => { onUploadArt(e.target.files?.[0]); if (fileRef.current) fileRef.current.value = ''; }} />
+          </div>
         </div>
       )}
       {needsCustomArt && !c.customArtPrompt && <p className="text-xs text-warn">Questo concept richiede uno sfondo che non è nel catalogo: scegline uno o caricane uno tuo.</p>}
-      <Button className="mt-auto" size="sm" onClick={onApply}><Check className="size-4" aria-hidden /> Applica questo concept</Button>
+      <Button className="mt-auto" size="sm" variant={c.customArtPrompt ? 'outline' : 'primary'} onClick={onApply}><Check className="size-4" aria-hidden /> {c.customArtPrompt ? 'Applica layout e colori (senza lo sfondo)' : 'Applica questo concept'}</Button>
     </div>
   );
 }
 
-export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' | 'niche' | 'update'>) {
+export function CoverAgent({ project, niche, chapters, update }: Pick<TabProps, 'project' | 'niche' | 'chapters' | 'update'>) {
   const store = useStore();
   const { getToken, status } = useApp();
   const toast = useToast();
@@ -106,6 +135,7 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
     feedback: fb.slice(0, 1500),
     previous: previous ? JSON.stringify(previous).slice(0, 12000) : '',
     competitors: shotList.map((s) => ({ mediaType: 'image/jpeg' as const, data: s.data, note: s.note.slice(0, 200) })),
+    bookFacts: bookFacts(project, chapters, cb.bonuses ?? ''),
     catalog: COVER_ART.map((a) => ({ id: a.id, name: a.name, tone: a.tone, suits: a.suits })),
     currentCover: { template: cover.template, artId: cover.art?.id ?? '', title: cover.title.slice(0, 300), fontName: cover.titleFont },
   });
@@ -159,6 +189,22 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
       toast(e instanceof Error ? e.message : 'Valutazione non riuscita.', 'bad');
     } finally {
       setBusy(null);
+    }
+  }
+
+  /** Applica il concept usando l'immagine generata dall'autore (es. con ChatGPT): sfondo su misura per la nicchia. */
+  async function applyWithUpload(c: CoverConcept, file: File | undefined) {
+    if (!file) return;
+    try {
+      const img = await prepareCoverImage(file);
+      const art: CoverArt = { id: null, dataUrl: img.dataUrl, aiGenerated: true, dim: cover.art?.dim ?? 0.45 };
+      const base = specFromConcept(cover, c);
+      const template = ART_TEMPLATES.includes(base.template) ? base.template : 'immersiva';
+      const declare = project.kdp.aiImages === 'none' ? { kdp: { ...project.kdp, aiImages: 'generated' as const } } : {};
+      update({ cover: { ...base, template, art, tagline: cover.tagline || c.taglineSuggestion || '' }, ...declare });
+      toast(`Concept «${c.name}» applicato con il tuo sfondo${img.width < 1300 ? ` (${img.width}×${img.height}px: per la stampa è un po’ piccolo)` : ''}. La dichiarazione KDP sulle immagini IA è impostata su «generate».`, img.width < 1300 ? 'info' : 'ok');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Caricamento non riuscito.', 'bad');
     }
   }
 
@@ -225,6 +271,12 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
         </div>
 
         <div className="mt-4">
+          <Field label="Bonus e contenuti extra INCLUSI nel libro (veri)" hint="Es. «piano alimentare di 7 giorni, lista della spesa, 30 ricette veloci». L'agente li usa per le etichette in copertina (fascia bonus, sigillo): se non scrivi nulla, non metterà bonus né numeri.">
+            {(id) => <Textarea id={id} rows={2} maxLength={700} value={cb.bonuses ?? ''} onChange={(e) => setCb({ bonuses: e.target.value })} />}
+          </Field>
+        </div>
+
+        <div className="mt-4">
           <Field label="2 · Cosa vuoi ottenere" hint="Es. «voglio un aspetto premium ma accessibile», «per chi parte da zero», «niente toni scuri».">
             {(id) => <Textarea id={id} rows={2} maxLength={1500} value={cb.notes} onChange={(e) => setCb({ notes: e.target.value })} />}
           </Field>
@@ -248,7 +300,7 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
 
           <p className="mb-2 mt-5 text-sm font-semibold text-ink">3 concept</p>
           <div className="grid gap-3 md:grid-cols-3">
-            {strat.concepts.slice(0, 3).map((c, i) => <ConceptCard key={i} c={c} base={cover} index={i} recommended={i === strat.recommendedIndex} onApply={() => apply(c)} trimW={trim.widthIn} trimH={trim.heightIn} />)}
+            {strat.concepts.slice(0, 3).map((c, i) => <ConceptCard key={i} c={c} base={cover} index={i} recommended={i === strat.recommendedIndex} onApply={() => apply(c)} onUploadArt={(f) => void applyWithUpload(c, f)} trimW={trim.widthIn} trimH={trim.heightIn} />)}
           </div>
           <p className="mt-3 text-sm text-ink/90"><strong>Perché il consigliato:</strong> {strat.recommendationReason}</p>
           {strat.thumbnailChecklist.length > 0 && (
@@ -275,7 +327,7 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
             <div className="rounded-lg border border-warn/40 bg-warn/10 p-3"><p className="mb-1 font-semibold text-warn">Problemi</p><ul className="list-disc space-y-0.5 pl-5 text-ink/90">{crit.problems.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
           </div>
           <p className="mb-2 mt-4 text-sm font-semibold text-ink">Versione migliorata</p>
-          <div className="max-w-xs"><ConceptCard c={crit.improvedConcept} base={cover} index={0} recommended={false} onApply={() => apply(crit.improvedConcept)} trimW={trim.widthIn} trimH={trim.heightIn} /></div>
+          <div className="max-w-xs"><ConceptCard c={crit.improvedConcept} base={cover} index={0} recommended={false} onApply={() => apply(crit.improvedConcept)} onUploadArt={(f) => void applyWithUpload(crit.improvedConcept, f)} trimW={trim.widthIn} trimH={trim.heightIn} /></div>
         </Card>
       )}
 
