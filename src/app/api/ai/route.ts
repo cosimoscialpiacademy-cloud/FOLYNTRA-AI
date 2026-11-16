@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-const MAX_BODY = 400_000;
+const MAX_BODY = 1_800_000; // le richieste dell'agente copertine includono fino a 7 immagini ridimensionate
 
 export async function POST(req: Request): Promise<Response> {
   try {

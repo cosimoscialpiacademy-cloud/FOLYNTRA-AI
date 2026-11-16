@@ -4,6 +4,12 @@ import { z } from 'zod';
 const s = (max: number) => z.string().max(max);
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
+export const CoverSchema = z.object({
+      template: z.enum(['classico', 'moderno', 'editoriale', 'immersiva', 'cornice', 'vetrina']), palette: z.object({ background: color, accent: color, text: color }),
+      titleFont: z.enum(['Playfair Display', 'Oswald', 'EB Garamond', 'Montserrat']),
+      art: z.object({ id: z.string().regex(/^[a-z0-9-]{1,40}$/).nullable(), dataUrl: z.string().regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/).max(3_000_000).nullable(), aiGenerated: z.boolean(), dim: z.number().min(0).max(1) }).nullable().optional(), title: s(300), subtitle: s(400), author: s(200), tagline: s(200), backText: s(3000), seed: z.number().int().min(0).max(1_000_000),
+    });
+
 export const BundleSchema = z.object({
   project: z.object({
     id: z.string().uuid(),
@@ -26,10 +32,7 @@ export const BundleSchema = z.object({
       trim: z.enum(['5x8', '5.5x8.5', '6x9', '7x10', '8.5x11']), paper: z.enum(['white', 'cream']), bleed: z.boolean(), bodyFont: z.enum(['EB Garamond', 'Inter']),
       fontSizePt: z.number().min(8).max(16), lineHeight: z.number().min(1.1).max(2), runningHeaders: z.boolean(), readerAiNotice: z.boolean(),
     }),
-    cover: z.object({
-      template: z.enum(['classico', 'moderno', 'editoriale']), palette: z.object({ background: color, accent: color, text: color }),
-      titleFont: z.enum(['Playfair Display', 'Oswald', 'EB Garamond']), title: s(300), subtitle: s(400), author: s(200), tagline: s(200), backText: s(3000), seed: z.number().int().min(0).max(1_000_000),
-    }),
+    cover: CoverSchema,
     kdp: z.object({
       description: s(8000), keywords: z.array(s(100)).max(20), categories: z.array(s(200)).max(10), listPricePaperback: z.number().min(0).max(999), listPriceEbook: z.number().min(0).max(999),
       aiText: z.enum(['none', 'assisted', 'generated']), aiImages: z.enum(['none', 'assisted', 'generated']), aiTranslation: z.enum(['none', 'assisted', 'generated']),

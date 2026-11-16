@@ -18,6 +18,8 @@ export interface QaInput {
   epub: { ok: boolean; problems: string[] };
   docx: { ok: boolean; problems: string[] };
   bonusWords: number;
+  /** Immagine usata in copertina (null se la copertina è solo vettoriale). */
+  coverArt?: { width: number; height: number; source: 'catalogo' | 'caricata'; aiGenerated: boolean } | null;
   /** Presente solo se epubcheck è stato davvero eseguito. */
   epubcheck?: { ok: boolean; detail: string };
 }
@@ -71,6 +73,15 @@ export function runQa(input: QaInput): { checks: QaCheck[]; kdpReady: boolean; i
   const anyAi = chapters.some((c) => c.aiGenerated);
   add('ia.dichiarazione', 'Dichiarazione IA coerente con il contenuto', 'critico', !(anyAi && project.kdp.aiText === 'none'),
     anyAi && project.kdp.aiText === 'none' ? 'Ci sono capitoli generati da IA ma la dichiarazione indica "nessun testo IA".' : `Testo: ${project.kdp.aiText}; immagini: ${project.kdp.aiImages}; traduzioni: ${project.kdp.aiTranslation}.`);
+  const art = input.coverArt ?? null;
+  if (art) {
+    const coverWidthIn = TRIM_SIZES[project.layout.trim].widthIn + BLEED_IN;
+    const dpi = Math.round(art.width / coverWidthIn);
+    add('copertina.immagine.ia', 'Immagine di copertina generata da IA dichiarata a KDP', 'critico', !(art.aiGenerated && project.kdp.aiImages === 'none'),
+      art.aiGenerated && project.kdp.aiImages === 'none' ? 'La copertina usa un’immagine generata da IA ma la dichiarazione indica «nessuna immagine IA».' : art.aiGenerated ? `Immagine IA (${art.source}) dichiarata: ${project.kdp.aiImages}.` : 'Immagine non generata da IA, come indicato.');
+    add('copertina.immagine.risoluzione', 'Risoluzione dell’immagine di copertina (almeno ~200 dpi)', 'avviso', dpi >= 200,
+      `${art.width} × ${art.height} px ≈ ${dpi} dpi sul fronte (KDP consiglia 300 dpi: sotto i 200 il risultato stampato può risultare morbido).`);
+  }
   add('diritti', 'Diritti e proprietà confermati', 'critico', project.kdp.rightsConfirmed, project.kdp.rightsConfirmed ? 'Confermati dall’utente.' : 'Da confermare nel KDP Kit.');
 
   // --- PDF interno ---

@@ -4,7 +4,7 @@
  * chiaramente marcato, che il QA blocca come "non pubblicabile".
  */
 import { MOCK_MARKER } from '../book/analysis';
-import type { BrainstormOutput, ChapterInput, ConceptOutput, MarketingOutput, OutlineOutput, ReviewOutput, BriefCtx } from './schemas';
+import type { BrainstormOutput, ChapterInput, ConceptOutput, CoverConcept, CoverCritiqueOutput, CoverStrategyOutput, MarketingOutput, OutlineOutput, ReviewOutput, BriefCtx } from './schemas';
 
 export const MOCK_MODEL = 'mock-dichiarato';
 
@@ -114,5 +114,39 @@ export function mockMarketing(b: BriefCtx, authorName: string): MarketingOutput 
     posts: ['Instagram', 'Facebook', 'LinkedIn', 'X', 'TikTok (copione)', 'Pinterest'].map((platform) => ({ platform, text: `${tag} Post segnaposto per ${platform}.`, hashtags: ['#segnaposto'] })),
     adAngles: Array.from({ length: 5 }, (_, i) => `${tag} Angolazione ${i + 1} segnaposto per un annuncio manuale.`),
     launchChecklist: ['Rileggi tutto il libro', 'Conferma di aver riveduto ogni capitolo', 'Carica i file su KDP e controlla il Previewer', 'Prepara la tua lista contatti', 'Sostituisci ogni testo segnaposto', 'Verifica ogni [DA VERIFICARE]', 'Pianifica le email', 'Prepara i post', 'Valuta un piccolo test Ads manuale', 'Annota i risultati reali'].map((x) => `${tag} ${x}`),
+  };
+}
+
+/** Strategia copertina segnaposto: valida per lo schema, marcata MOCK, nessun parere di mercato inventato. */
+export function mockCoverStrategy(i: { currentCover: { title: string }; catalog: { id: string; tone: 'dark' | 'light' }[] }): CoverStrategyOutput {
+  const tag = `[${MOCK_MARKER}]`;
+  const dark = i.catalog.find((a) => a.tone === 'dark')?.id ?? '';
+  const light = i.catalog.find((a) => a.tone === 'light')?.id ?? '';
+  const concept = (name: string, template: CoverConcept['template'], artId: string, bg: string, accent: string, text: string, font: CoverConcept['titleFont']): CoverConcept => ({
+    name: `${tag} ${name}`, rationale: `${tag} Motivazione segnaposto: serve la chiave AI per un'analisi vera.`, standOut: `${tag} Nessuna analisi dei concorrenti eseguita.`,
+    template, artId, customArtPrompt: '', palette: { background: bg, accent, text }, titleFont: font, titleLines: (i.currentCover.title || 'Titolo').split(' ').slice(0, 4),
+    taglineSuggestion: '', thumbnailTest: `${tag} Riduci la copertina a 100 px e controlla che il titolo si legga.`, risks: `${tag} Concept non basato su dati.`,
+  });
+  return {
+    marketReading: { dominantStyles: [`${tag} Analisi non eseguita`], colorPatterns: [`${tag} Analisi non eseguita`], typographyPatterns: [`${tag} Analisi non eseguita`], gaps: [`${tag} Analisi non eseguita`] },
+    audienceInsight: `${tag} Nessuna analisi del pubblico: configura la chiave Anthropic.`,
+    basedOn: 'solo_testo_e_conoscenze_generali',
+    concepts: [
+      concept('Scuro d’impatto', 'immersiva', dark, '#0A1426', '#E4C07A', '#F7F4ED', 'Montserrat'),
+      concept('Chiaro elegante', 'vetrina', light, '#F4F1EA', '#A9852F', '#1B2233', 'Playfair Display'),
+      concept('Cornice sobria', 'cornice', dark, '#04292E', '#7FF3E1', '#F2FFFC', 'EB Garamond'),
+    ],
+    recommendedIndex: 0,
+    recommendationReason: `${tag} Nessuna raccomandazione reale: è un segnaposto per provare il flusso.`,
+    thumbnailChecklist: [`${tag} Il titolo si legge a 100 px?`, `${tag} Si distingue accanto ai concorrenti?`, `${tag} Il genere è riconoscibile?`],
+  };
+}
+
+export function mockCoverCritique(i: { currentCover: { title: string }; catalog: { id: string; tone: 'dark' | 'light' }[] }): CoverCritiqueOutput {
+  const tag = `[${MOCK_MARKER}]`;
+  const s = mockCoverStrategy(i);
+  return {
+    verdict: `${tag} Nessuna valutazione reale: è attivo il mock.`, standsOut: `${tag} Non valutato.`, readability: `${tag} Non valutata.`,
+    strengths: [`${tag} Non valutati`], problems: [`${tag} Non valutati`], improvedConcept: s.concepts[0],
   };
 }

@@ -1,5 +1,7 @@
 /** Tipi di dominio FOLYNTRA AI (Fase A). */
 
+import type { CoverCritiqueOutput, CoverStrategyOutput } from './ai/schemas';
+
 export type Marketplace = 'amazon.it' | 'amazon.com' | 'amazon.co.uk' | 'amazon.de' | 'amazon.fr' | 'amazon.es';
 export type Currency = 'EUR' | 'USD' | 'GBP';
 
@@ -95,18 +97,29 @@ export interface LayoutSettings {
   readerAiNotice: boolean;
 }
 
-export type CoverTemplateId = 'classico' | 'moderno' | 'editoriale';
+export type CoverTemplateId = 'classico' | 'moderno' | 'editoriale' | 'immersiva' | 'cornice' | 'vetrina';
+
+/** Immagine di copertina: dal catalogo (id) oppure caricata dall'utente (data URL). */
+export interface CoverArt {
+  id: string | null;
+  dataUrl: string | null;
+  /** true se l'immagine è stata generata con IA: va dichiarato a KDP. */
+  aiGenerated: boolean;
+  /** Velatura per la leggibilità del testo, 0 (nessuna) – 1 (massima). */
+  dim: number;
+}
 
 export interface CoverSpec {
   template: CoverTemplateId;
   palette: { background: string; accent: string; text: string };
-  titleFont: 'Playfair Display' | 'Oswald' | 'EB Garamond';
+  titleFont: 'Playfair Display' | 'Oswald' | 'EB Garamond' | 'Montserrat';
   title: string;
   subtitle: string;
   author: string;
   tagline: string;
   backText: string;
   seed: number;
+  art?: CoverArt | null;
 }
 
 export interface KdpMeta {
@@ -129,6 +142,22 @@ export interface Matter {
   conclusion: string;
   acknowledgments: string;
   authorBio: string;
+}
+
+/** Screenshot di una copertina concorrente caricato dall'utente (ridimensionato, JPEG in base64 senza prefisso). */
+export interface CompetitorShot {
+  id: string;
+  data: string;
+  note: string;
+}
+
+export interface CoverBrief {
+  competitors: CompetitorShot[];
+  notes: string;
+  strategy: CoverStrategyOutput | null;
+  strategyIsMock: boolean;
+  critique: CoverCritiqueOutput | null;
+  critiqueIsMock: boolean;
 }
 
 /** Kit marketing: bozze per l'autore. Mai testimonianze, recensioni o dati di vendita inventati. */
@@ -171,6 +200,8 @@ export interface Project {
   /** Pagine effettive dell'ultimo PDF interno renderizzato (null = mai renderizzato). */
   pageCount: number | null;
   marketing?: MarketingKit | null;
+  /** Lavoro dell'agente copertine: screenshot dei concorrenti (forniti dall'utente), strategia e ultima valutazione. */
+  coverBrief?: CoverBrief | null;
   createdAt: string;
   updatedAt: string;
 }

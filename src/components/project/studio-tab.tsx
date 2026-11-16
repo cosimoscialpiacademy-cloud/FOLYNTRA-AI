@@ -1,21 +1,24 @@
 'use client';
 
-import { Download, FileText, Shuffle } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Download, FileText, ImagePlus, Shuffle, Upload } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Card, CardTitle, Field, Input, Notice, Select, Textarea, useToast } from '@/components/ui';
 import { callExport, downloadBlob } from '@/lib/client-api';
+import { ART_TEMPLATES, COVER_ART, artById, artThumb } from '@/lib/cover-art';
 import { COVER_PRESETS } from '@/lib/defaults';
+import { prepareCoverImage } from '@/lib/image-upload';
 import { frontCoverSvg, fullCoverSvg } from '@/lib/export/cover-svg';
 import { logActivity } from '@/lib/generation';
 import { MIN_PAGES, MIN_PAGES_SPINE_TEXT, TRIM_SIZES, coverGeometry } from '@/lib/kdp/specs';
 import { useApp, useStore } from '@/lib/store/context';
-import type { CoverSpec, LayoutSettings, TrimSizeId } from '@/lib/types';
+import type { CoverArt, CoverSpec, LayoutSettings, TrimSizeId } from '@/lib/types';
 import { cn, wordCount } from '@/lib/utils';
+import { CoverAgent } from './cover-agent';
 import type { TabProps } from './types';
 
 const hex = (v: string) => (/^#[0-9a-fA-F]{6}$/.test(v) ? v : '#000000');
 
-export function StudioTab({ project, chapters, update, goTo }: TabProps) {
+export function StudioTab({ project, chapters, niche, update, goTo }: TabProps) {
   const store = useStore();
   const { getToken, status } = useApp();
   const toast = useToast();
@@ -29,7 +32,38 @@ export function StudioTab({ project, chapters, update, goTo }: TabProps) {
 
   useEffect(() => () => { if (pdf) URL.revokeObjectURL(pdf.url); }, [pdf]);
 
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadAi, setUploadAi] = useState(false);
+  const isArtTemplate = ART_TEMPLATES.includes(cover.template);
   const setCover = (patch: Partial<CoverSpec>) => update({ cover: { ...cover, ...patch } });
+  /** Le immagini IA vanno dichiarate a KDP: la dichiarazione passa a «generate» senza che l'utente debba ricordarsene. */
+  const withAiDeclaration = (art: CoverArt | null) => (art?.aiGenerated && project.kdp.aiImages === 'none' ? { kdp: { ...project.kdp, aiImages: 'generated' as const } } : {});
+  function chooseArt(id: string) {
+    const item = artById(id);
+    if (!item) return;
+    const art: CoverArt = { id, dataUrl: null, aiGenerated: true, dim: cover.art?.dim ?? 0.55 };
+    update({ cover: { ...cover, art, palette: { ...item.palette } }, ...withAiDeclaration(art) });
+  }
+  function choosePreset(p: (typeof COVER_PRESETS)[number]) {
+    const wantsArt = ART_TEMPLATES.includes(p.template);
+    const keep = cover.art && (cover.art.id || cover.art.dataUrl) ? cover.art : null;
+    const art: CoverArt | null = wantsArt ? keep ?? (p.art ? { id: p.art, dataUrl: null, aiGenerated: true, dim: 0.55 } : null) : cover.art ?? null;
+    const palette = wantsArt && keep?.id ? { ...artById(keep.id)!.palette } : wantsArt && !keep ? { ...p.palette } : { ...p.palette };
+    update({ cover: { ...cover, template: p.template, palette, titleFont: p.titleFont, art }, ...(wantsArt ? withAiDeclaration(art) : {}) });
+  }
+  async function onUpload(file: File | undefined) {
+    if (!file) return;
+    try {
+      const img = await prepareCoverImage(file);
+      const art: CoverArt = { id: null, dataUrl: img.dataUrl, aiGenerated: uploadAi, dim: cover.art?.dim ?? 0.55 };
+      update({ cover: { ...cover, art, template: ART_TEMPLATES.includes(cover.template) ? cover.template : 'immersiva' }, ...withAiDeclaration(art) });
+      toast(img.width < 1300 ? `Immagine caricata (${img.width}×${img.height}px): per la stampa è un po’ piccola, potrebbe risultare morbida.` : `Immagine caricata (${img.width}×${img.height}px).`, img.width < 1300 ? 'info' : 'ok');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Caricamento non riuscito.', 'bad');
+    } finally {
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
   // Cambiare formato o tipografia cambia il numero di pagine: il dorso va ricalcolato.
   const setLayout = (patch: Partial<LayoutSettings>, affectsPages = true) => update({ layout: { ...layout, ...patch }, ...(affectsPages ? { pageCount: null } : {}) });
 
@@ -58,23 +92,53 @@ export function StudioTab({ project, chapters, update, goTo }: TabProps) {
 
   return (
     <div className="space-y-4">
+      <CoverAgent project={project} niche={niche} update={update} />
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
         <Card className="order-2 lg:order-1">
           <CardTitle>Copertina</CardTitle>
-          <p className="mb-3 text-sm text-slate2">Tre proposte originali disegnate dal software (grafica vettoriale, nessuna immagine stock, font open-source). Scegline una e personalizzala.</p>
+          <p className="mb-3 text-sm text-slate2">Sei layout originali: tre con immagine a tutta pagina e tre vettoriali. Font open-source, nessuna immagine stock.</p>
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {COVER_PRESETS.map((p) => {
               const selected = cover.template === p.template;
               return (
-                <button key={p.template} aria-pressed={selected} onClick={() => setCover({ template: p.template, palette: { ...p.palette }, titleFont: p.titleFont })}
+                <button key={p.template} aria-pressed={selected} onClick={() => choosePreset(p)}
                   className={cn('rounded-lg border p-1.5 text-left transition-shadow sm:p-2', selected ? 'border-cyan shadow-md' : 'border-line hover:shadow')}>
-                  <div className="overflow-hidden rounded" style={{ aspectRatio: `${trim.widthIn}/${trim.heightIn}` }} dangerouslySetInnerHTML={{ __html: frontCoverSvg({ ...cover, template: p.template, palette: p.palette, titleFont: p.titleFont }, trim.widthIn, trim.heightIn) }} />
+                  <div className="overflow-hidden rounded" style={{ aspectRatio: `${trim.widthIn}/${trim.heightIn}` }} dangerouslySetInnerHTML={{ __html: frontCoverSvg({ ...cover, template: p.template, palette: ART_TEMPLATES.includes(p.template) && !cover.art && p.art ? { ...artById(p.art)!.palette } : cover.art?.id && ART_TEMPLATES.includes(p.template) ? { ...artById(cover.art.id)!.palette } : p.palette, titleFont: p.titleFont, art: ART_TEMPLATES.includes(p.template) ? (cover.art ?? (p.art ? { id: p.art, dataUrl: null, aiGenerated: true, dim: 0.55 } : null)) : cover.art }, trim.widthIn, trim.heightIn) }} />
                   <p className="mt-1.5 text-sm font-semibold text-ink">{p.label}</p>
                   <p className="hidden text-xs text-slate2 sm:block">{p.description}</p>
                 </button>
               );
             })}
           </div>
+
+          {isArtTemplate && (
+            <div className="mt-4 rounded-xl border border-line bg-card2 p-3 sm:p-4">
+              <p className="text-sm font-semibold text-ink">Sfondo della copertina</p>
+              <p className="mt-0.5 text-xs text-slate2">Immagini generate con IA (GPT Image 2.6 di OpenAI, tramite Higgsfield). Scegliendone una, la dichiarazione KDP sulle immagini IA passa a «generate». Controlla che il tuo piano consenta l’uso commerciale.</p>
+              <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                {COVER_ART.map((a) => (
+                  <button key={a.id} aria-pressed={cover.art?.id === a.id} aria-label={`Sfondo ${a.name}`} title={`${a.name} — ${a.suits}`} onClick={() => chooseArt(a.id)}
+                    className={cn('overflow-hidden rounded-md border-2 transition', cover.art?.id === a.id ? 'border-cyan shadow-[0_0_0_2px_rgba(0,229,255,0.25)]' : 'border-transparent hover:border-line')}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={artThumb(a.id)} alt={a.name} loading="lazy" className="aspect-[2/3] w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+              {cover.art?.id && <p className="mt-2 text-xs text-slate2">Selezionato: <strong className="text-ink">{artById(cover.art.id)?.name}</strong> · adatto a: {artById(cover.art.id)?.suits}.</p>}
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-medium text-ink">Velatura per leggere il testo: {Math.round((cover.art?.dim ?? 0.55) * 100)}%
+                  <input type="range" min={0} max={100} value={Math.round((cover.art?.dim ?? 0.55) * 100)} disabled={!cover.art} onChange={(e) => cover.art && setCover({ art: { ...cover.art, dim: Number(e.target.value) / 100 } })} className="accent-cyan" />
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3">
+                <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="size-4" aria-hidden /> Carica la tua immagine</Button>
+                <label className="flex items-center gap-2 text-xs text-slate2"><input type="checkbox" className="size-4 accent-cyan" checked={uploadAi} onChange={(e) => setUploadAi(e.target.checked)} /> È stata generata con IA (es. ChatGPT, Midjourney)</label>
+                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void onUpload(e.target.files?.[0])} aria-label="Carica immagine di copertina" />
+                {cover.art?.dataUrl && <Button variant="ghost" size="sm" onClick={() => setCover({ art: null })}><ImagePlus className="size-4" aria-hidden /> Rimuovi immagine</Button>}
+              </div>
+              <p className="mt-2 text-xs text-slate2">Per la stampa servono immagini di almeno ~1400×2100 px (6×9 in a ~230 dpi). Se l’immagine è tua, garantisci di averne i diritti.</p>
+            </div>
+          )}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Field label="Titolo in copertina" className="sm:col-span-2">{(id) => <Input id={id} value={cover.title} onChange={(e) => setCover({ title: e.target.value })} />}</Field>
@@ -86,6 +150,7 @@ export function StudioTab({ project, chapters, update, goTo }: TabProps) {
                   <option value="Playfair Display">Playfair Display (serif elegante)</option>
                   <option value="EB Garamond">EB Garamond (serif classico)</option>
                   <option value="Oswald">Oswald (condensato moderno)</option>
+                  <option value="Montserrat">Montserrat (sans moderno, d’impatto)</option>
                 </Select>
               )}
             </Field>
@@ -101,7 +166,6 @@ export function StudioTab({ project, chapters, update, goTo }: TabProps) {
             ))}
             <Button variant="outline" onClick={() => setCover({ seed: Math.floor(Math.random() * 100000) })}><Shuffle className="size-4" aria-hidden /> Varia il motivo grafico</Button>
           </div>
-          <p className="mt-3 text-xs text-slate2">Immagini caricate dall’utente e immagini generate da IA non sono ancora disponibili: nessun provider di immagini è collegato.</p>
         </Card>
 
         <div className="order-1 lg:order-2">

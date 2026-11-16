@@ -4,7 +4,10 @@ import type { Chapter, CoverSpec, KdpMeta, LayoutSettings, Niche, Project } from
 
 export const DEFAULT_BUDGET_USD = 20;
 
-export const COVER_PRESETS: { template: CoverSpec['template']; label: string; description: string; palette: CoverSpec['palette']; titleFont: CoverSpec['titleFont'] }[] = [
+export const COVER_PRESETS: { template: CoverSpec['template']; label: string; description: string; palette: CoverSpec['palette']; titleFont: CoverSpec['titleFont']; art?: string }[] = [
+  { template: 'immersiva', label: 'Immersiva', description: 'Immagine a tutta pagina, titolo grande in basso. Il più d’impatto.', palette: { background: '#0A1426', accent: '#E4C07A', text: '#F7F4ED' }, titleFont: 'Montserrat', art: 'oro-notte' },
+  { template: 'cornice', label: 'Cornice', description: 'Immagine con cornice sottile e targa centrale. Elegante.', palette: { background: '#04292E', accent: '#7FF3E1', text: '#F2FFFC' }, titleFont: 'Playfair Display', art: 'oceano' },
+  { template: 'vetrina', label: 'Vetrina', description: 'Immagine in alto, titolo su pannello pieno. Pulito, leggibile in miniatura.', palette: { background: '#F1EFE6', accent: '#4F7149', text: '#243322' }, titleFont: 'EB Garamond', art: 'botanico' },
   { template: 'classico', label: 'Classico', description: 'Cornice tipografica, serif elegante, simmetria.', palette: { background: '#0D1424', accent: '#D7B574', text: '#F7F4ED' }, titleFont: 'Playfair Display' },
   { template: 'moderno', label: 'Moderno', description: 'Blocchi geometrici, titolo condensato ad alto impatto.', palette: { background: '#F7F4ED', accent: '#B4532A', text: '#182239' }, titleFont: 'Oswald' },
   { template: 'editoriale', label: 'Editoriale', description: 'Motivo generativo a linee, composizione asimmetrica.', palette: { background: '#1F3A3D', accent: '#E8C27A', text: '#F7F4ED' }, titleFont: 'EB Garamond' },

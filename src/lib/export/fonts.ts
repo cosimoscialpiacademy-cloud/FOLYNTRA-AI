@@ -10,9 +10,10 @@ const FAMILIES: Record<string, { pkg: string; variants: [number, 'normal' | 'ita
   'Playfair Display': { pkg: 'playfair-display', variants: [[400, 'normal'], [700, 'normal'], [400, 'italic']] },
   Inter: { pkg: 'inter', variants: [[400, 'normal'], [400, 'italic'], [600, 'normal'], [700, 'normal']] },
   Oswald: { pkg: 'oswald', variants: [[400, 'normal'], [700, 'normal']] },
+  Montserrat: { pkg: 'montserrat', variants: [[600, 'normal'], [700, 'normal'], [800, 'normal']] },
 };
 
-export const FONT_LICENSE_NOTE = 'Font EB Garamond, Playfair Display, Inter e Oswald: SIL Open Font License 1.1 (uso commerciale e incorporazione consentiti).';
+export const FONT_LICENSE_NOTE = 'Font EB Garamond, Playfair Display, Inter, Oswald e Montserrat: SIL Open Font License 1.1 (uso commerciale e incorporazione consentiti).';
 
 const cache = new Map<string, string>();
 

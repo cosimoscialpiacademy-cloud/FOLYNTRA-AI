@@ -89,6 +89,13 @@ export async function callExport(format: 'kit' | 'interior', bundle: BookBundle,
   };
 }
 
+/** Disegna il fronte della copertina come JPEG (per mostrarlo in miniatura e farlo valutare all'agente). */
+export async function callCoverImage(cover: unknown, token: string | null): Promise<Blob> {
+  const res = await fetch('/api/cover', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders(token) }, body: JSON.stringify({ cover }) });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return res.blob();
+}
+
 export async function fetchStatus(token: string | null = null): Promise<ServerStatus> {
   const res = await fetch('/api/status', { cache: 'no-store', headers: authHeaders(token) });
   if (!res.ok) throw new Error('Stato del server non disponibile');

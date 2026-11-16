@@ -137,3 +137,13 @@ Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso dem
 - Auto-test all'avvio del server (`src/instrumentation.ts`): scrive nei log `[renderer] OK — Chromium … PDF di prova …` oppure `FALLITO`. Disattivabile con `RENDERER_SELFTEST=false`. Chromium parte con `--disable-dev-shm-usage` (evita crash nei container).
 - Eseguito: typecheck, lint, **72/72** test, e2e demo **18/18**, e2e accesso **8/8**.
 - Non verificato: il kit marketing con l'AI reale (solo mock e finto provider).
+
+## Aggiornamento — copertine con immagine, agente direttore artistico, analisi concorrenza
+
+- **12 sfondi per copertina** in alta risoluzione (1360×2048) generati con IA (GPT Image 2.6 via Higgsfield, 16/11/2026; costo ~12 crediti), in `public/cover-art` con miniature. Tre nuovi layout (Immersiva, Cornice, Vetrina), font Montserrat, velatura regolabile, caricamento di immagine propria, immagine estesa nell'abbondanza di stampa.
+- **KDP e IA**: scegliere uno sfondo del catalogo imposta la dichiarazione «immagini generate da IA»; il QA blocca se manca (critico) e avvisa se la risoluzione scende sotto ~200 dpi. Note su diritti/uso commerciale in `diritti.md` e `ai-disclosure.json`.
+- **Agente direttore artistico**: screenshot dei concorrenti forniti dall'utente (nessuno scraping) → lettura del mercato, 3 concept con motivazione e rischi, valutazione della copertina reale (disegnata dal server), rielaborazione sui commenti, confronto in miniatura. Con AI non collegata risponde con segnaposto dichiarati (mock).
+- `docs/10-ANALISI-CONCORRENZA-E-GAP.md`: confronto con il sistema di Stoppello da sole fonti pubbliche. Il contenuto del corso a pagamento NON è stato letto (area riservata).
+- Eseguito: typecheck, lint, **77/77** test, e2e demo **18/18**, e2e accesso **8/8**.
+- **Non verificato:** l'agente con l'AI reale (solo mock e finto provider); la lettura di immagini da parte del modello vero.
+- Prossimi passi: Autopilota, ottimizzatore Ads (azioni suggerite), traduzioni, metodo personale da `docs/metodo-*.md`.

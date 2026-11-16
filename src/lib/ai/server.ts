@@ -6,9 +6,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { z } from 'zod';
 import { DEFAULT_MODEL, computeCost, worstCaseCost } from './pricing';
-import { MOCK_MODEL, mockBrainstorm, mockChapter, mockConcept, mockMarketing, mockOutline, mockReview } from './mock';
-import { SYSTEM_EDITORIAL, brainstormPrompt, chapterPrompt, conceptPrompt, marketingPrompt, outlinePrompt, reviewPrompt } from './prompts';
-import { BrainstormOutput, ConceptOutput, MarketingOutput, OutlineOutput, ReviewOutput, type AiEvent, type AiRequest } from './schemas';
+import { MOCK_MODEL, mockBrainstorm, mockChapter, mockConcept, mockCoverCritique, mockCoverStrategy, mockMarketing, mockOutline, mockReview } from './mock';
+import { coverPlaybook } from './playbook';
+import { SYSTEM_EDITORIAL, brainstormPrompt, chapterPrompt, conceptPrompt, coverCritiquePrompt, coverStrategyPrompt, marketingPrompt, outlinePrompt, reviewPrompt } from './prompts';
+import { BrainstormOutput, ConceptOutput, CoverCritiqueOutput, CoverStrategyOutput, MarketingOutput, OutlineOutput, ReviewOutput, type AiEvent, type AiRequest } from './schemas';
 
 export interface AiConfig {
   mode: 'anthropic' | 'mock';
@@ -40,7 +41,7 @@ export function aiConfig(): AiConfig {
   return { mode: 'anthropic', model, reason: '', maxUsdPerBook };
 }
 
-const MAX_TOKENS: Record<AiRequest['task'], number> = { brainstorm: 6000, concept: 4000, outline: 8000, chapter: 0, review: 6000, marketing: 9000 };
+const MAX_TOKENS: Record<AiRequest['task'], number> = { brainstorm: 6000, concept: 4000, outline: 8000, chapter: 0, review: 6000, marketing: 9000, cover: 7000, coverCritique: 5000 };
 
 function chapterMaxTokens(targetWords: number): number {
   // ~2 token per parola italiana + margine per il ragionamento adattivo.
@@ -73,10 +74,33 @@ function promptFor(req: AiRequest): string {
     case 'chapter': return chapterPrompt(req.input);
     case 'review': return reviewPrompt(req.input.brief, req.input.chapterTitle, req.input.content);
     case 'marketing': return marketingPrompt(req.input.brief, req.input.authorName, req.input.currentDescription);
+    case 'cover': return coverStrategyPrompt({ ...req.input, hasImages: req.input.competitors.length > 0 }, coverPlaybook());
+    case 'coverCritique': return coverCritiquePrompt({ ...req.input, hasCompetitors: req.input.competitors.length > 0 }, coverPlaybook());
   }
 }
 
-const OUTPUT_SCHEMA = { brainstorm: BrainstormOutput, concept: ConceptOutput, outline: OutlineOutput, review: ReviewOutput, marketing: MarketingOutput } as const;
+interface InputImage { mediaType: 'image/jpeg' | 'image/png' | 'image/webp'; data: string; note: string }
+
+/** Immagini da allegare alla richiesta (copertine dei concorrenti, e la nostra da valutare). */
+function imagesFor(req: AiRequest): { label: string; image: InputImage }[] {
+  if (req.task === 'cover') return req.input.competitors.map((image, i) => ({ label: `Copertina del concorrente ${i + 1}${image.note ? ` (${image.note})` : ''}:`, image }));
+  if (req.task === 'coverCritique') return [{ label: 'LA NOSTRA COPERTINA da valutare:', image: req.input.ownCover }, ...req.input.competitors.map((image, i) => ({ label: `Copertina del concorrente ${i + 1}${image.note ? ` (${image.note})` : ''}:`, image }))];
+  return [];
+}
+
+function contentFor(req: AiRequest, prompt: string): Anthropic.MessageParam['content'] {
+  const imgs = imagesFor(req);
+  if (!imgs.length) return prompt;
+  return [
+    ...imgs.flatMap(({ label, image }) => [
+      { type: 'text' as const, text: label },
+      { type: 'image' as const, source: { type: 'base64' as const, media_type: image.mediaType, data: image.data } },
+    ]),
+    { type: 'text' as const, text: prompt },
+  ];
+}
+
+const OUTPUT_SCHEMA = { brainstorm: BrainstormOutput, concept: ConceptOutput, outline: OutlineOutput, review: ReviewOutput, marketing: MarketingOutput, cover: CoverStrategyOutput, coverCritique: CoverCritiqueOutput } as const;
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
@@ -94,6 +118,8 @@ async function* runMock(req: AiRequest, signal: AbortSignal): AsyncGenerator<AiE
     case 'outline': return void (yield done({ data: mockOutline(req.input.brief, req.input.chapterCount, req.input.targetWords) }));
     case 'review': return void (yield done({ data: mockReview() }));
     case 'marketing': return void (yield done({ data: mockMarketing(req.input.brief, req.input.authorName) }));
+    case 'cover': return void (yield done({ data: mockCoverStrategy(req.input) }));
+    case 'coverCritique': return void (yield done({ data: mockCoverCritique(req.input) }));
     case 'chapter': {
       const text = mockChapter(req.input);
       for (let i = 0; i < text.length; i += 220) {
@@ -111,7 +137,8 @@ async function* runAnthropic(req: AiRequest, cfg: AiConfig, signal: AbortSignal)
   const prompt = promptFor(req);
   const maxTokens = req.task === 'chapter' ? chapterMaxTokens(req.input.chapter.targetWords) : MAX_TOKENS[req.task];
   const cap = Math.min(cfg.maxUsdPerBook, req.budgetUsd);
-  const estimate = worstCaseCost(cfg.model, prompt.length + SYSTEM_EDITORIAL.length, maxTokens);
+  // Ogni immagine pesa circa 1.500 token in ingresso (≈ 3.750 caratteri equivalenti).
+  const estimate = worstCaseCost(cfg.model, prompt.length + SYSTEM_EDITORIAL.length + imagesFor(req).length * 3750, maxTokens);
   if (req.spentUsd + estimate > cap) {
     throw new PublicError(`Budget AI insufficiente: spesi ${req.spentUsd.toFixed(2)} $ su ${cap.toFixed(2)} $, questa richiesta può costare fino a ${estimate.toFixed(2)} $. Aumenta il tetto del libro per proseguire.`, false);
   }
@@ -119,7 +146,7 @@ async function* runAnthropic(req: AiRequest, cfg: AiConfig, signal: AbortSignal)
     model: cfg.model,
     max_tokens: maxTokens,
     system: SYSTEM_EDITORIAL,
-    messages: [{ role: 'user' as const, content: prompt }],
+    messages: [{ role: 'user' as const, content: contentFor(req, prompt) }],
   };
 
   if (req.task === 'chapter') {
