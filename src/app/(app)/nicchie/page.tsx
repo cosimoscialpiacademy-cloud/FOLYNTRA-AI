@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, FlaskConical, Lightbulb, Plus, Sparkles, Upload } from 'lucide-react';
+import { Download, FlaskConical, Lightbulb, Plus, Sparkles, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { NicheDetail } from '@/components/niche/niche-detail';
 import { PageHeader } from '@/components/shell';
@@ -38,6 +38,16 @@ export default function NichesPage() {
   const [importResult, setImportResult] = useState<CsvImportResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
+
+  async function removeAll() {
+    const n = niches.data.length;
+    if (!n || !window.confirm(`Eliminare TUTTE le ${n} nicchie? I progetti (libri) già creati restano al loro posto.`)) return;
+    for (const x of niches.data) await store.remove('niches', x.id);
+    setSelectedId(null);
+    setCompare([]);
+    setImportResult(null);
+    toast(`${n} nicchie eliminate. Si riparte da zero.`, 'ok');
+  }
 
   const sorted = [...niches.data].sort((a, b) => (evaluateNiche(b).score ?? -1) - (evaluateNiche(a).score ?? -1) || b.createdAt.localeCompare(a.createdAt));
   const selected = sorted.find((n) => n.id === selectedId) ?? null;
@@ -164,6 +174,7 @@ export default function NichesPage() {
             <input ref={fileRef} type="file" accept=".csv,text/csv" className="sr-only" id="csv-file" onChange={(e) => void onFile(e.target.files?.[0])} />
             <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload className="size-4" aria-hidden /> Importa CSV</Button>
             <Button variant="outline" onClick={() => void loadDemo()}><FlaskConical className="size-4" aria-hidden /> Carica nicchie DEMO</Button>
+            {niches.data.length > 0 && <Button variant="danger" onClick={() => void removeAll()}><Trash2 className="size-4" aria-hidden /> Elimina tutte le nicchie ({niches.data.length})</Button>}
           </div>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
             <button className="inline-flex items-center gap-1 font-medium text-cyan hover:underline" onClick={() => downloadBlob(new Blob([CSV_TEMPLATE_SIGNALS], { type: 'text/csv' }), 'modello-segnali.csv')}><Download className="size-3.5" aria-hidden /> Modello CSV segnali</button>
