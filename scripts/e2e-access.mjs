@@ -31,6 +31,9 @@ const fake = createServer(async (req, res) => {
   const prompt = JSON.stringify(body.messages);
   upstream.push({ key: req.headers['x-api-key'] ?? null, auth: req.headers.authorization ?? null, stream: Boolean(body.stream), headers: Object.keys(req.headers), scoring: prompt.includes('Valuta queste ipotesi di nicchia') });
   let payload = brainstorm;
+  if (prompt.includes("Estrai l'elenco dei LIBRI")) {
+    payload = { books: [{ title: 'Orto sul balcone facile', asin: '', price: 12.99, rating: 4.5, reviews: 1234, boughtLastMonth: 1000, pages: -1, bsr: -1 }, { title: 'Verdure in vaso', asin: '', price: 9.99, rating: 4.2, reviews: 310, boughtLastMonth: 100, pages: -1, bsr: -1 }], notes: '' };
+  }
   if (prompt.includes('Valuta queste ipotesi di nicchia')) {
     const ids = [...prompt.matchAll(/id=([0-9a-zA-Z-]+)/g)].map((m) => m[1]);
     payload = { results: ids.map((id, i) => ({ id, demand: sig(70 - i), competition: sig(50), trend: sig(60), unitEconomics: sig(55), differentiation: sig(65), risks: ['rischio di prova'], verifyChecklist: ['verifica 1', 'verifica 2'], summary: 'Sintesi di prova.' })) };
@@ -143,6 +146,18 @@ try {
     assert(!JSON.stringify(upstream).includes('keepa-finta'), 'la chiave Keepa è finita altrove');
     await page.screenshot({ path: path.join(OUT, '04-dati-reali-keepa.png'), fullPage: true });
     return `affidabilità ${conf}% (da 30%)`;
+  });
+
+  await step('Incolla da Amazon (gratis): l’IA estrae i libri dal testo copiato e la nicchia si riempie di concorrenti e segnali', async () => {
+    const row = page.locator('tr', { hasText: 'Idea reale di prova 2' });
+    await row.getByRole('button', { name: 'Apri' }).click();
+    await page.getByLabel('Testo copiato da Amazon').fill('Risultati\nOrto sul balcone facile - Guida per principianti 4,5 su 5 stelle (1.234) Più di 1.000 acquistati nell\'ultimo mese 12,99 €\nVerdure in vaso - manuale pratico 4,2 su 5 stelle (310) Più di 100 acquistati nell\'ultimo mese 9,99 €\nSponsorizzato: Semi di pomodoro.');
+    await page.getByRole('button', { name: /Estrai e importa/ }).click();
+    await page.getByText(/Importati 2 libri dai dati incollati/).waitFor({ timeout: 20000 });
+    await page.getByText('Orto sul balcone facile').first().waitFor({ timeout: 10000 });
+    assert(upstream.length === 3, `chiamate al provider IA: ${upstream.length} (attese 3: ipotesi, stima, estrazione)`);
+    await page.screenshot({ path: path.join(OUT, '05-incolla-amazon.png'), fullPage: true });
+    return '2 libri estratti e importati';
   });
 
   await step('Il codice resta salvato solo sul dispositivo; “Blocca” lo cancella e richiede di nuovo il codice', async () => {

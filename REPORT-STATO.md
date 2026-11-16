@@ -165,3 +165,10 @@ Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso dem
 - Eseguito: typecheck, lint, **100/100** test, e2e demo 18/18, e2e accesso **9/9** (con Keepa simulato: affidabilità 30% → 60%).
 - **NON verificato:** Keepa con una chiave reale (formato letto dalla documentazione ufficiale e provato solo contro un servizio finto); l'analisi di immagini da parte del modello vero.
 - Richiede: `KEEPA_API_KEY` sul server. Le copertine dei concorrenti sono scaricate (max 3 per analisi) dal CDN di Amazon con gli indirizzi forniti da Keepa; controlla che l'uso sia coerente con i termini di Keepa e di Amazon.
+
+## Aggiornamento — dati reali gratis (Incolla da Amazon) e agente copertine guidato
+
+- Senza Keepa (a pagamento) ora ci sono due vie gratuite, legate alla nicchia: **(1) «Incolla da Amazon»** nel dettaglio nicchia: link già pronto alla ricerca per la keyword, l'autore copia la pagina (Cmd+A, Cmd+C) e la incolla; l'IA estrae solo libri, prezzi, recensioni e «acquistati nell'ultimo mese» presenti nel testo (nessun dato inventato) e si calcolano concorrenti e segnali («Importato»). **(2) Agente copertine**: link alla ricerca della nicchia + **un solo screenshot** della pagina; l'agente sceglie da solo le 3 copertine più forti fra quelle visibili.
+- Nessun accesso automatico ad Amazon: è l'autore a guardare e copiare/fotografare la pagina.
+- Eseguito: typecheck, lint, **105/105** test, e2e demo 18/18, e2e accesso **10/10**.
+- **Non verificato:** estrazione e analisi immagini con il modello vero (solo finto provider) — da provare dal vivo.

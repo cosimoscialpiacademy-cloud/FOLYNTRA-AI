@@ -60,6 +60,12 @@ export function marketSignals(books: MarketBook[], marketplace: Marketplace, sou
   const out: Partial<Record<SignalKey, Metric>> = {};
   const metric = (value: number, methodology: string): Metric => ({ value: clamp(value), unit: 'punti 0-100', status: 'imported', source, observedAt, sampleSize: s.count, methodology });
 
+  const sold = books.map((b) => b.monthlySold).filter((n): n is number => n !== null);
+  if (s.medianBsr === null && sold.length) {
+    const top = median(sold) as number;
+    const v = curve(Math.log10(Math.max(1, top)), [[1.0, 22], [2.0, 50], [3.0, 78], [3.7, 93]]);
+    out.demand = metric(v, `Mediana degli «acquistati nell'ultimo mese» dichiarati da Amazon su ${sold.length} libri = ${Math.round(top).toLocaleString('it-IT')} (Amazon li indica a fasce, es. «100+»; non tutti i libri lo mostrano).`);
+  }
   if (s.medianBsr !== null) {
     const equiv = s.medianBsr / RANK_SCALE[marketplace]; // classifica «equivalente amazon.com»
     const v = curve(Math.log10(Math.max(1, equiv)), [[3.7, 95], [4.3, 82], [4.7, 68], [5.0, 55], [5.5, 35], [6.0, 15]]);

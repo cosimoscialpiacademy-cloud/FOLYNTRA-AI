@@ -169,6 +169,7 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
     toast(`Concept «${c.name}» applicato alla copertina.`, 'ok');
   }
 
+  const searchKeyword = niche?.keyword || project.kdp.keywords.find((k) => k.trim()) || project.title;
   const strat = cb.strategy;
   const crit = cb.critique;
   const shots = cb.competitors;
@@ -185,15 +186,26 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
         {status?.ai.mode === 'mock' && <Notice tone="warn" className="mt-3">AI non collegata: l’agente risponde con segnaposto dichiarati (mock). Con la chiave Anthropic analizza davvero le immagini dei concorrenti.</Notice>}
 
         <div className="mt-4 rounded-xl border border-cyan/30 bg-cyan/5 p-3">
-          <p className="text-sm font-semibold text-ink">Automatico: trova da solo i concorrenti che vendono</p>
-          <p className="mt-0.5 text-xs text-slate2">Cerca la keyword della tua nicchia su Amazon (via Keepa), prende i <strong className="text-ink">3 libri con il miglior Sales Rank</strong> (un indicatore indiretto di vendite, non del profitto reale), ne guarda le copertine e propone concept per fare meglio.</p>
-          <Button className="mt-2" variant="primary" onClick={() => void findAndAnalyze()} loading={busy === 'market'} disabled={busy !== null || !status?.providers.keepa}><Search className="size-4" aria-hidden /> Trova i 3 concorrenti migliori e analizza</Button>
-          {!status?.providers.keepa && <p className="mt-2 text-xs text-warn">Non ancora attivo: serve un piano API di Keepa (servizio a pagamento) e la variabile <code>KEEPA_API_KEY</code> sul server. Nel frattempo puoi caricare tu le copertine qui sotto.</p>}
+          <p className="text-sm font-semibold text-ink">Come si fa (30 secondi, gratis)</p>
+          <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm text-slate2">
+            <li>Tocca il pulsante qui sotto: si apre Amazon <strong className="text-ink">già sulla ricerca della tua nicchia</strong> («{searchKeyword}» su {project.marketplace}). Non devi cercare niente.</li>
+            <li>Fai uno <strong className="text-ink">screenshot</strong> della pagina (Mac: <strong className="text-ink">Cmd+Shift+4</strong> e trascina sulla pagina; iPhone: tasto laterale + volume su).</li>
+            <li>Trascina lo screenshot nel riquadro «Aggiungi» qui sotto, poi premi <strong className="text-ink">«Analizza»</strong>. L’agente sceglie da solo le 3 copertine più forti fra quelle che vede e propone come batterle.</li>
+          </ol>
+          <a className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg bg-cyan px-4 text-sm font-semibold text-onbrand hover:brightness-110" href={`https://www.${project.marketplace}/s?k=${encodeURIComponent(searchKeyword)}&i=stripbooks`} target="_blank" rel="noopener noreferrer"><Search className="size-4" aria-hidden /> Apri su Amazon la ricerca per la tua nicchia</a>
+          {status?.providers.keepa ? (
+            <div className="mt-3 border-t border-cyan/20 pt-3">
+              <p className="text-xs text-slate2">Oppure, tutto automatico con Keepa: prende i 3 libri con il miglior Sales Rank (indicatore indiretto di vendite, non di profitto).</p>
+              <Button className="mt-2" variant="outline" size="sm" onClick={() => void findAndAnalyze()} loading={busy === 'market'} disabled={busy !== null}><Search className="size-4" aria-hidden /> Trova i 3 concorrenti migliori e analizza</Button>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-slate2">Opzionale (a pagamento): collegando Keepa (<code>KEEPA_API_KEY</code>) la ricerca diventa del tutto automatica, senza screenshot.</p>
+          )}
         </div>
 
         <div className="mt-4">
-          <p className="text-sm font-semibold text-ink">1 · Copertine dei concorrenti <span className="font-normal text-slate2">(fino a {MAX_SHOTS}) · oppure caricale tu</span></p>
-          <p className="text-xs text-slate2">Fai uno screenshot dei risultati di Amazon per la tua parola chiave e carica le copertine dei libri che vendono meglio. Nessuno scraping: le immagini le fornisci tu e restano nel tuo archivio.</p>
+          <p className="text-sm font-semibold text-ink">Screenshot dei concorrenti <span className="font-normal text-slate2">(ne basta uno della pagina dei risultati)</span></p>
+          <p className="text-xs text-slate2">Le immagini le fornisci tu e restano nel tuo archivio (nessuno scraping di Amazon). Se uno screenshot contiene più copertine, l’agente le analizza tutte.</p>
           <div className="mt-2 flex flex-wrap gap-3">
             {shots.map((s) => (
               <div key={s.id} className="w-28 space-y-1">

@@ -8,8 +8,8 @@ import type { z } from 'zod';
 import { DEFAULT_MODEL, computeCost, worstCaseCost } from './pricing';
 import { MOCK_MODEL, mockBrainstorm, mockChapter, mockConcept, mockCoverCritique, mockCoverStrategy, mockMarketing, mockOutline, mockReview } from './mock';
 import { coverPlaybook } from './playbook';
-import { SYSTEM_EDITORIAL, brainstormPrompt, chapterPrompt, conceptPrompt, coverCritiquePrompt, coverStrategyPrompt, marketingPrompt, nicheScorePrompt, outlinePrompt, reviewPrompt } from './prompts';
-import { BrainstormOutput, ConceptOutput, CoverCritiqueOutput, CoverStrategyOutput, MarketingOutput, NicheScoreOutput, OutlineOutput, ReviewOutput, type AiEvent, type AiRequest } from './schemas';
+import { SYSTEM_EDITORIAL, brainstormPrompt, chapterPrompt, conceptPrompt, coverCritiquePrompt, coverStrategyPrompt, marketTextPrompt, marketingPrompt, nicheScorePrompt, outlinePrompt, reviewPrompt } from './prompts';
+import { BrainstormOutput, ConceptOutput, CoverCritiqueOutput, CoverStrategyOutput, MarketTextOutput, MarketingOutput, NicheScoreOutput, OutlineOutput, ReviewOutput, type AiEvent, type AiRequest } from './schemas';
 
 export interface AiConfig {
   mode: 'anthropic' | 'mock';
@@ -41,7 +41,7 @@ export function aiConfig(): AiConfig {
   return { mode: 'anthropic', model, reason: '', maxUsdPerBook };
 }
 
-const MAX_TOKENS: Record<AiRequest['task'], number> = { brainstorm: 6000, concept: 4000, outline: 8000, chapter: 0, review: 6000, marketing: 9000, cover: 7000, coverCritique: 5000, nicheScore: 8000 };
+const MAX_TOKENS: Record<AiRequest['task'], number> = { brainstorm: 6000, concept: 4000, outline: 8000, chapter: 0, review: 6000, marketing: 9000, cover: 7000, coverCritique: 5000, nicheScore: 8000, marketText: 6000 };
 
 function chapterMaxTokens(targetWords: number): number {
   // ~2 token per parola italiana + margine per il ragionamento adattivo.
@@ -75,6 +75,7 @@ function promptFor(req: AiRequest): string {
     case 'review': return reviewPrompt(req.input.brief, req.input.chapterTitle, req.input.content);
     case 'marketing': return marketingPrompt(req.input.brief, req.input.authorName, req.input.currentDescription);
     case 'nicheScore': return nicheScorePrompt(req.input);
+    case 'marketText': return marketTextPrompt(req.input);
     case 'cover': return coverStrategyPrompt({ ...req.input, hasImages: req.input.competitors.length > 0 }, coverPlaybook());
     case 'coverCritique': return coverCritiquePrompt({ ...req.input, hasCompetitors: req.input.competitors.length > 0 }, coverPlaybook());
   }
@@ -101,7 +102,7 @@ function contentFor(req: AiRequest, prompt: string): Anthropic.MessageParam['con
   ];
 }
 
-const OUTPUT_SCHEMA = { brainstorm: BrainstormOutput, concept: ConceptOutput, outline: OutlineOutput, review: ReviewOutput, marketing: MarketingOutput, cover: CoverStrategyOutput, coverCritique: CoverCritiqueOutput, nicheScore: NicheScoreOutput } as const;
+const OUTPUT_SCHEMA = { brainstorm: BrainstormOutput, concept: ConceptOutput, outline: OutlineOutput, review: ReviewOutput, marketing: MarketingOutput, cover: CoverStrategyOutput, coverCritique: CoverCritiqueOutput, nicheScore: NicheScoreOutput, marketText: MarketTextOutput } as const;
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
@@ -120,6 +121,7 @@ async function* runMock(req: AiRequest, signal: AbortSignal): AsyncGenerator<AiE
     case 'review': return void (yield done({ data: mockReview() }));
     case 'marketing': return void (yield done({ data: mockMarketing(req.input.brief, req.input.authorName) }));
     case 'nicheScore': return void (yield { t: 'error', message: 'La stima IA delle nicchie non è disponibile con il mock: il mock non inventa valutazioni di mercato. Servono ANTHROPIC_API_KEY e ENABLE_EXTERNAL_PAID_APIS=true, oppure inserisci i segnali a mano o importa un CSV.', retryable: false });
+    case 'marketText': return void (yield { t: 'error', message: 'L’estrazione dei dati dal testo incollato richiede l’AI collegata (il mock non inventa dati di mercato). Servono ANTHROPIC_API_KEY e ENABLE_EXTERNAL_PAID_APIS=true.', retryable: false });
     case 'cover': return void (yield done({ data: mockCoverStrategy(req.input) }));
     case 'coverCritique': return void (yield done({ data: mockCoverCritique(req.input) }));
     case 'chapter': {

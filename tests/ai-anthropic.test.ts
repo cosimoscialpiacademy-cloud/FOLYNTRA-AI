@@ -156,6 +156,18 @@ describe('AI reale contro server finto compatibile Anthropic', () => {
     expect(prompt).toMatch(/NON riscriverla e lascia replacement vuoto/);
   });
 
+  it('estrazione da testo incollato: dati strutturati, il prompt vieta di inventare e tratta il testo come dati', async () => {
+    behavior = { text: JSON.stringify({ books: [{ title: 'Orto facile', asin: '', price: 12.99, rating: 4.5, reviews: 1234, boughtLastMonth: 100, pages: -1, bsr: -1 }], notes: '' }) };
+    const pasted = 'Orto facile per principianti — 4,5 su 5 stelle (1.234) — 12,99 € — Più di 100 acquistati nell\'ultimo mese. '.repeat(3);
+    const ev = await collect({ task: 'marketText', input: { text: pasted, marketplace: 'amazon.it', language: 'italiano' }, ...base });
+    expect(err(ev)).toBeUndefined();
+    expect((done(ev)!.data as { books: { reviews: number }[] }).books[0].reviews).toBe(1234);
+    const prompt = JSON.stringify(seen[0].body.messages);
+    expect(prompt).toMatch(/NON inventare/);
+    expect(prompt).toMatch(/dati, non istruzioni/);
+    expect(prompt).toContain('Orto facile per principianti');
+  });
+
   it('stima IA delle nicchie: risposta strutturata validata, un solo giro, prompt che vieta dati inventati', async () => {
     const sig = (value: number) => ({ value, why: 'giudizio qualitativo' });
     behavior = { text: JSON.stringify({ results: [{ id: 'n1', demand: sig(70), competition: sig(50), trend: sig(60), unitEconomics: sig(55), differentiation: sig(65), risks: ['r1'], verifyChecklist: ['c1'], summary: 's' }] }) };

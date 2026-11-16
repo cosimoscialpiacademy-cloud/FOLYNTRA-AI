@@ -50,7 +50,7 @@ async function canvasJpeg(source: ImageBitmap, maxSide: number, maxChars: number
   throw new Error('Immagine troppo complessa da comprimere: usa uno screenshot più piccolo.');
 }
 
-/** Screenshot di una copertina concorrente: lato lungo 720 px, JPEG in base64 (senza prefisso), entro il limite del server. */
+/** Screenshot di una copertina o di una pagina di risultati: lato lungo 1280 px, JPEG in base64 (senza prefisso), entro il limite del server. */
 export async function prepareCompetitorShot(file: File): Promise<{ base64: string; width: number; height: number }> {
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Formato non supportato: usa JPG, PNG o WebP.');
   if (file.size > 20_000_000) throw new Error('File troppo grande (massimo 20 MB).');
@@ -58,7 +58,7 @@ export async function prepareCompetitorShot(file: File): Promise<{ base64: strin
     throw new Error('Impossibile leggere l’immagine.');
   });
   try {
-    return await canvasJpeg(bitmap, 720, 200_000);
+    return await canvasJpeg(bitmap, 1280, 200_000);
   } finally {
     bitmap.close();
   }

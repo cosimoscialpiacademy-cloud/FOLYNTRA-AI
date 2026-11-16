@@ -10,6 +10,7 @@ import { paperbackRoyalty } from '@/lib/kdp/royalty';
 import { MARKETPLACES } from '@/lib/kdp/specs';
 import { callMarket } from '@/lib/client-api';
 import { estimateNiches } from '@/lib/niche/ai-estimate';
+import { applyPasted, extractBooksFromText } from '@/lib/niche/paste-import';
 import { applyMarketData } from '@/lib/niche/market';
 import { DEMO_NOTICE } from '@/lib/niche/demo';
 import { SIGNALS, STATUS_LABEL, emptySignals, estimateSignalsFromCompetitors, evaluateNiche, summarizeCompetitors } from '@/lib/niche/engine';
@@ -50,6 +51,26 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
   const { getToken, status } = useApp();
   const [estimatingAi, setEstimatingAi] = useState(false);
   const [fetchingReal, setFetchingReal] = useState(false);
+  const [pasted, setPasted] = useState('');
+  const [importing, setImporting] = useState(false);
+
+  /** Importa i dati copiati dall'autore da una pagina di Amazon: l'IA estrae solo ciò che c'è scritto. */
+  async function importPasted() {
+    if (pasted.trim().length < 40) return toast('Incolla il testo della pagina di Amazon (almeno qualche riga).', 'bad');
+    setImporting(true);
+    try {
+      const { books, notes, done } = await extractBooksFromText(pasted, draft.marketplace, MARKETPLACES[draft.marketplace].language, { token: await getToken(), budgetUsd: status?.ai.maxUsdPerBook ?? 20 });
+      if (!books.length) throw new Error('Nel testo non ho trovato libri: copia la pagina dei risultati di ricerca (Cmd+A, Cmd+C) e riprova.');
+      setDraft(applyPasted(draft, books));
+      await recordCost(store, null, `Estrazione dati Amazon: ${draft.keyword}`, done);
+      setPasted('');
+      toast(`Importati ${books.length} libri dai dati incollati: concorrenti e segnali aggiornati.${notes ? ` Nota: ${notes}` : ''}`, 'ok');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Importazione non riuscita.', 'bad');
+    } finally {
+      setImporting(false);
+    }
+  }
 
   /** Dati reali da Keepa: libri in testa alla ricerca → concorrenti e segnali di domanda, competizione ed economia. */
   async function fetchRealData() {
@@ -182,6 +203,22 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
           </div>
         )}
       </Card>
+
+      {!draft.demoOnly && (
+        <Card>
+          <CardTitle>Dati reali gratis: incolla da Amazon</CardTitle>
+          <ol className="list-decimal space-y-1 pl-5 text-sm text-slate2">
+            <li>Apri la ricerca su Amazon per questa keyword: <a className="font-medium text-cyan underline" href={`https://www.${draft.marketplace}/s?k=${encodeURIComponent(draft.keyword)}&i=stripbooks`} target="_blank" rel="noopener noreferrer">cerca «{draft.keyword}» su {draft.marketplace}</a>.</li>
+            <li>Seleziona tutto e copia: sul Mac <strong className="text-ink">Cmd+A</strong> poi <strong className="text-ink">Cmd+C</strong> (su iPhone: tieni premuto, «Seleziona tutto», «Copia»).</li>
+            <li>Incolla qui sotto. L’IA estrae solo libri, prezzi, recensioni e «acquistati nell’ultimo mese» che trova scritti: niente viene inventato.</li>
+          </ol>
+          <Textarea aria-label="Testo copiato da Amazon" className="mt-3 min-h-28 text-xs" rows={5} maxLength={20000} placeholder="Incolla qui il testo copiato dalla pagina di Amazon…" value={pasted} onChange={(e) => setPasted(e.target.value)} />
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <Button variant="primary" size="sm" loading={importing} disabled={status?.ai.mode === 'mock' || pasted.trim().length < 40} title={status?.ai.mode === 'mock' ? 'Serve l’AI collegata' : undefined} onClick={() => void importPasted()}><Search className="size-4" aria-hidden /> Estrai e importa</Button>
+            <span className="text-xs text-slate2">Sei tu a guardare e copiare la pagina: nessun accesso automatico ad Amazon. Controlla i concorrenti importati prima di fidarti.</span>
+          </div>
+        </Card>
+      )}
 
       <Card>
         <CardTitle action={!draft.demoOnly && <div className="flex flex-wrap gap-2"><Button variant="primary" size="sm" loading={fetchingReal} disabled={!status?.providers.keepa} title={status?.providers.keepa ? 'Legge i primi libri su Amazon via Keepa' : 'Serve KEEPA_API_KEY sul server'} onClick={() => void fetchRealData()}><Search className="size-4" aria-hidden /> Dati reali (Keepa)</Button><Button variant="gold" size="sm" loading={estimatingAi} disabled={status?.ai.mode === 'mock'} title={status?.ai.mode === 'mock' ? 'Serve l’AI collegata' : undefined} onClick={() => void estimateWithAi()}><Sparkles className="size-4" aria-hidden /> Stima con IA</Button></div>}>Segnali e provenienza</CardTitle>

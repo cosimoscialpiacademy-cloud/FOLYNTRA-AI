@@ -138,6 +138,14 @@ export const NicheScoreOutput = z.object({
 });
 export type NicheScoreOutput = z.infer<typeof NicheScoreOutput>;
 
+export const MarketTextInput = z.object({ text: z.string().min(40).max(20000), marketplace: short, language: short });
+/** Valore -1 / stringa vuota = non presente nel testo (niente null: schema semplice per l'output strutturato). */
+export const MarketTextOutput = z.object({
+  books: z.array(z.object({ title: z.string(), asin: z.string(), price: z.number(), rating: z.number(), reviews: z.number(), boughtLastMonth: z.number(), pages: z.number(), bsr: z.number() })),
+  notes: z.string(),
+});
+export type MarketTextOutput = z.infer<typeof MarketTextOutput>;
+
 export const AiRequest = z.discriminatedUnion('task', [
   z.object({ task: z.literal('brainstorm'), input: BrainstormInput }),
   z.object({ task: z.literal('concept'), input: ConceptInput }),
@@ -146,6 +154,7 @@ export const AiRequest = z.discriminatedUnion('task', [
   z.object({ task: z.literal('review'), input: ReviewInput }),
   z.object({ task: z.literal('marketing'), input: MarketingInput }),
   z.object({ task: z.literal('nicheScore'), input: NicheScoreInput }),
+  z.object({ task: z.literal('marketText'), input: MarketTextInput }),
   z.object({ task: z.literal('cover'), input: CoverInput }),
   z.object({ task: z.literal('coverCritique'), input: CoverCritiqueInput }),
 ]).and(z.object({
