@@ -170,7 +170,7 @@ export default function NichesPage() {
             <button className="inline-flex items-center gap-1 font-medium text-cyan hover:underline" onClick={() => downloadBlob(new Blob([CSV_TEMPLATE_COMPETITORS], { type: 'text/csv' }), 'modello-concorrenti.csv')}><Download className="size-3.5" aria-hidden /> Modello CSV concorrenti</button>
           </div>
           <ul className="mt-3 space-y-1 text-xs text-slate2">
-            <li>• Keepa: {status?.providers.keepa ? 'chiave presente, adapter previsto in Fase B (non ancora attivo).' : 'non configurato (Fase B, richiede abbonamento).'}</li>
+            <li>• Dati di mercato Amazon: {status?.providers.market ? `attivi (${status.providers.keepa ? 'Keepa' : 'SerpApi'}): apri una nicchia e premi «Dati reali (Amazon)».` : 'non configurati: apri una nicchia e usa «Incolla da Amazon» (gratis), oppure collega SerpApi (piano gratuito).'}</li>
             <li>• Google Trends API: accesso alpha limitato; usa l’import manuale.</li>
             <li>• Nessuno scraping di Amazon: i dati li porti tu, con fonte e data.</li>
           </ul>

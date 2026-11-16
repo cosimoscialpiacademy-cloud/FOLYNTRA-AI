@@ -72,15 +72,15 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
     }
   }
 
-  /** Dati reali da Keepa: libri in testa alla ricerca → concorrenti e segnali di domanda, competizione ed economia. */
+  /** Dati reali da Amazon (via SerpApi o Keepa): libri in testa alla ricerca → concorrenti e segnali di domanda, competizione ed economia. */
   async function fetchRealData() {
     setFetchingReal(true);
     try {
       const r = await callMarket(draft.keyword, draft.marketplace, false, await getToken());
       setDraft(applyMarketData(draft, r));
-      toast(`Dati reali importati da Keepa (${r.books.length} libri): domanda, competizione ed economia aggiornate.${r.tokensLeft !== null ? ` Token Keepa rimasti: ${r.tokensLeft}.` : ''}`, 'ok');
+      toast(`Dati reali importati da Amazon (${r.books.length} libri, via ${r.provider === 'serpapi' ? 'SerpApi' : 'Keepa'}): domanda, competizione ed economia aggiornate.${r.tokensLeft !== null ? ` Token Keepa rimasti: ${r.tokensLeft}.` : ''}`, 'ok');
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Dati Keepa non disponibili.', 'bad');
+      toast(e instanceof Error ? e.message : 'Dati di mercato non disponibili.', 'bad');
     } finally {
       setFetchingReal(false);
     }
@@ -221,7 +221,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
       )}
 
       <Card>
-        <CardTitle action={!draft.demoOnly && <div className="flex flex-wrap gap-2"><Button variant="primary" size="sm" loading={fetchingReal} disabled={!status?.providers.keepa} title={status?.providers.keepa ? 'Legge i primi libri su Amazon via Keepa' : 'Serve KEEPA_API_KEY sul server'} onClick={() => void fetchRealData()}><Search className="size-4" aria-hidden /> Dati reali (Keepa)</Button><Button variant="gold" size="sm" loading={estimatingAi} disabled={status?.ai.mode === 'mock'} title={status?.ai.mode === 'mock' ? 'Serve l’AI collegata' : undefined} onClick={() => void estimateWithAi()}><Sparkles className="size-4" aria-hidden /> Stima con IA</Button></div>}>Segnali e provenienza</CardTitle>
+        <CardTitle action={!draft.demoOnly && <div className="flex flex-wrap gap-2"><Button variant="primary" size="sm" loading={fetchingReal} disabled={!status?.providers.market} title={status?.providers.market ? 'Legge i primi libri in classifica su Amazon' : 'Serve SERPAPI_API_KEY (gratuita) o KEEPA_API_KEY sul server'} onClick={() => void fetchRealData()}><Search className="size-4" aria-hidden /> Dati reali (Amazon)</Button><Button variant="gold" size="sm" loading={estimatingAi} disabled={status?.ai.mode === 'mock'} title={status?.ai.mode === 'mock' ? 'Serve l’AI collegata' : undefined} onClick={() => void estimateWithAi()}><Sparkles className="size-4" aria-hidden /> Stima con IA</Button></div>}>Segnali e provenienza</CardTitle>
         <p className="mb-3 text-sm text-slate2">Opportunità = 0,30·Domanda + 0,25·(100 − Competizione) + 0,15·Trend + 0,20·Economia + 0,10·Differenziazione. Lascia vuoto ciò che non sai: non viene inventato alcun numero.</p>
         <div className="space-y-3">
           {SIGNALS.map((s) => {

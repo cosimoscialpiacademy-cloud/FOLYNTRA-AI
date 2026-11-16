@@ -87,7 +87,7 @@ export default function SettingsPage() {
               <Row label="epubcheck" ok={status.epubcheck}>
                 {status.epubcheck ? 'La validazione epubcheck viene eseguita a ogni esportazione.' : 'Non configurato (EPUBCHECK_JAR): l’EPUB riceve solo la verifica strutturale interna e il report lo dichiara.'}
               </Row>
-              <Row label="Keepa" ok="off">Fase B. {status.providers.keepa ? 'Chiave presente, ma l’adapter non è ancora attivo.' : 'Richiede abbonamento e chiave: nessuna chiamata viene fatta.'}</Row>
+              <Row label="Dati di mercato Amazon" ok={status.providers.market}>{status.providers.market ? `Attivo (${status.providers.keepa ? 'Keepa' : 'SerpApi'}): pulsante «Dati reali» nelle nicchie e ricerca automatica dei concorrenti nell’agente copertine.` : 'Non configurato: servono SERPAPI_API_KEY (piano gratuito) oppure KEEPA_API_KEY. Nel frattempo usa «Incolla da Amazon» e gli screenshot.'}</Row>
               <Row label="Google Trends API" ok="off">Accesso alpha limitato: per ora solo import manuale dei dati.</Row>
               <Row label="Amazon Ads API" ok="off">Fase C, solo dopo approvazione Amazon e consenso OAuth. Nessuna campagna viene creata o spesa.</Row>
             </ul>

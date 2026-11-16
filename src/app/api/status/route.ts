@@ -24,6 +24,6 @@ async function status(req: Request): Promise<Response> {
     supabase: supabaseConfigured(),
     renderer: chromiumPath() !== null,
     epubcheck: Boolean(process.env.EPUBCHECK_JAR && existsSync(process.env.EPUBCHECK_JAR)),
-    providers: { keepa: Boolean(process.env.KEEPA_API_KEY), googleTrends: Boolean(process.env.GOOGLE_TRENDS_API_KEY), amazonAds: Boolean(process.env.AMAZON_ADS_CLIENT_ID) && process.env.ENABLE_AMAZON_ADS_LIVE === 'true' },
+    providers: { keepa: Boolean(process.env.KEEPA_API_KEY), serpapi: Boolean(process.env.SERPAPI_API_KEY), market: Boolean(process.env.KEEPA_API_KEY || process.env.SERPAPI_API_KEY), googleTrends: Boolean(process.env.GOOGLE_TRENDS_API_KEY), amazonAds: Boolean(process.env.AMAZON_ADS_CLIENT_ID) && process.env.ENABLE_AMAZON_ADS_LIVE === 'true' },
   });
 }

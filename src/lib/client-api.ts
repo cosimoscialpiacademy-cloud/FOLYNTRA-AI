@@ -8,7 +8,7 @@ export interface ServerStatus {
   supabase: boolean;
   renderer: boolean;
   epubcheck: boolean;
-  providers: { keepa: boolean; googleTrends: boolean; amazonAds: boolean };
+  providers: { keepa: boolean; serpapi: boolean; market: boolean; googleTrends: boolean; amazonAds: boolean };
 }
 
 export type DoneEvent = Extract<AiEvent, { t: 'done' }>;
@@ -90,6 +90,7 @@ export async function callExport(format: 'kit' | 'interior', bundle: BookBundle,
 }
 
 export interface MarketResponse {
+  provider?: 'keepa' | 'serpapi';
   books: import('./providers/keepa').MarketBook[];
   signals: Partial<Record<import('./types').SignalKey, import('./types').Metric>>;
   covers: { asin: string; rank: number; note: string; mediaType: 'image/jpeg'; data: string }[];

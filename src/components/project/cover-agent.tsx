@@ -126,7 +126,7 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
     }
   }
 
-  /** Cerca da solo, via Keepa, i 3 libri che vendono meglio per la keyword della nicchia e li fa analizzare all'agente. */
+  /** Cerca da solo (SerpApi o Keepa) i 3 libri in testa alla classifica per la keyword della nicchia e li fa analizzare all'agente. */
   async function findAndAnalyze() {
     const keyword = niche?.keyword || project.kdp.keywords.find((k) => k.trim()) || project.title;
     setBusy('market');
@@ -193,13 +193,13 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
             <li>Trascina lo screenshot nel riquadro «Aggiungi» qui sotto, poi premi <strong className="text-ink">«Analizza»</strong>. L’agente sceglie da solo le 3 copertine più forti fra quelle che vede e propone come batterle.</li>
           </ol>
           <a className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg bg-cyan px-4 text-sm font-semibold text-onbrand hover:brightness-110" href={`https://www.${project.marketplace}/s?k=${encodeURIComponent(searchKeyword)}&i=stripbooks`} target="_blank" rel="noopener noreferrer"><Search className="size-4" aria-hidden /> Apri su Amazon la ricerca per la tua nicchia</a>
-          {status?.providers.keepa ? (
+          {status?.providers.market ? (
             <div className="mt-3 border-t border-cyan/20 pt-3">
-              <p className="text-xs text-slate2">Oppure, tutto automatico con Keepa: prende i 3 libri con il miglior Sales Rank (indicatore indiretto di vendite, non di profitto).</p>
-              <Button className="mt-2" variant="outline" size="sm" onClick={() => void findAndAnalyze()} loading={busy === 'market'} disabled={busy !== null}><Search className="size-4" aria-hidden /> Trova i 3 concorrenti migliori e analizza</Button>
+              <p className="text-xs text-slate2">Oppure, tutto automatico: prende i 3 libri in testa ai <strong className="text-ink">Best Sellers</strong> di Amazon per la tua keyword (un indicatore indiretto di vendite, non del profitto reale) e li analizza.</p>
+              <Button className="mt-2" variant="primary" size="sm" onClick={() => void findAndAnalyze()} loading={busy === 'market'} disabled={busy !== null}><Search className="size-4" aria-hidden /> Trova i 3 concorrenti migliori e analizza</Button>
             </div>
           ) : (
-            <p className="mt-3 text-xs text-slate2">Opzionale (a pagamento): collegando Keepa (<code>KEEPA_API_KEY</code>) la ricerca diventa del tutto automatica, senza screenshot.</p>
+            <p className="mt-3 text-xs text-slate2">Opzionale: collegando un servizio di dati (<code>SERPAPI_API_KEY</code>, piano gratuito) la ricerca diventa del tutto automatica, senza screenshot.</p>
           )}
         </div>
 

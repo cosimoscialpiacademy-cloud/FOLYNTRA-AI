@@ -17,6 +17,16 @@ function median(v: number[]): number | null {
   return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
 }
 
+/** Percentile con interpolazione lineare (p tra 0 e 1). */
+function percentile(v: number[], p: number): number | null {
+  const a = v.filter((n) => Number.isFinite(n)).sort((x, y) => x - y);
+  if (!a.length) return null;
+  const pos = (a.length - 1) * p;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  return a[lo] + (a[hi] - a[lo]) * (pos - lo);
+}
+
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
 /** Interpolazione lineare su una tabella (x crescente → y). */
@@ -36,6 +46,8 @@ export interface MarketSummary {
   count: number;
   medianBsr: number | null;
   medianReviews: number | null;
+  /** Recensioni al 75° percentile: tiene conto dei libri forti che la mediana nasconde. */
+  p75Reviews: number | null;
   shareOver500Reviews: number | null;
   medianPrice: number | null;
   medianPages: number | null;
@@ -48,6 +60,7 @@ export function summarizeMarket(books: MarketBook[]): MarketSummary {
     count: books.length,
     medianBsr: median(num((b) => b.bsr)),
     medianReviews: median(reviews),
+    p75Reviews: percentile(reviews, 0.75),
     shareOver500Reviews: reviews.length ? reviews.filter((r) => r > 500).length / reviews.length : null,
     medianPrice: median(num((b) => b.price)),
     medianPages: median(num((b) => b.pages)),
@@ -71,10 +84,10 @@ export function marketSignals(books: MarketBook[], marketplace: Marketplace, sou
     const v = curve(Math.log10(Math.max(1, equiv)), [[3.7, 95], [4.3, 82], [4.7, 68], [5.0, 55], [5.5, 35], [6.0, 15]]);
     out.demand = metric(v, `Sales Rank mediano dei primi ${s.count} risultati = ${Math.round(s.medianBsr).toLocaleString('it-IT')} (indicatore indiretto di vendite; soglie euristiche, scala mercato ×${RANK_SCALE[marketplace]}).`);
   }
-  if (s.medianReviews !== null) {
-    const v = curve(Math.log10(Math.max(1, s.medianReviews)), [[0.7, 15], [1.5, 30], [2.0, 48], [2.5, 68], [3.0, 85], [3.5, 95]]);
+  if (s.p75Reviews !== null && s.medianReviews !== null) {
+    const v = curve(Math.log10(Math.max(1, s.p75Reviews)), [[0.7, 15], [1.5, 30], [2.0, 48], [2.5, 68], [3.0, 85], [3.5, 95]]);
     const share = s.shareOver500Reviews === null ? '' : ` ${Math.round(s.shareOver500Reviews * 100)}% dei libri ha più di 500 recensioni.`;
-    out.competition = metric(v, `Recensioni mediane dei primi ${s.count} risultati = ${Math.round(s.medianReviews).toLocaleString('it-IT')}: più recensioni = barriera d'ingresso più alta.${share}`);
+    out.competition = metric(v, `Recensioni dei primi ${s.count} risultati: mediana ${Math.round(s.medianReviews).toLocaleString('it-IT')}, 75° percentile ${Math.round(s.p75Reviews).toLocaleString('it-IT')} (conta il percentile, per non ignorare i libri forti): più recensioni = barriera d'ingresso più alta.${share}`);
   }
   if (s.medianPrice !== null) {
     const pages = s.medianPages ?? 150;

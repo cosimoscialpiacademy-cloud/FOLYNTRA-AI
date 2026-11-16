@@ -13,7 +13,9 @@
 - Il pulsante «Deploy» di Railway sulle variabili in coda ha costruito una volta dal ramo `main` (vuoto) e ha fallito: dopo aver aggiunto variabili dal pannello, riportare la sorgente sul ramo giusto.
 - Il sito resta sulla versione buona se un deploy fallisce.
 
-## PROSSIMO PASSO CONCORDATO: collegare SerpApi (alternativa economica a Keepa)
+## FATTO (16/11/2026 sera): SerpApi collegato — vedi REPORT-STATO.md. Resta: rigenerare la chiave (è apparsa in uno screenshot) e verificare dal vivo l'agente copertine
+
+## (storico) Piano per collegare SerpApi
 Motivo: Keepa costa troppo. SerpApi dichiara ~100 ricerche Amazon gratis al mese senza carta (da verificare sul loro sito). È un servizio di terzi che legge Amazon: zona grigia rispetto ai termini di Amazon, rischio dichiarato al proprietario, scelta sua. La via pulita e già pronta resta: screenshot della ricerca + «Incolla da Amazon».
 
 Quando il proprietario è al computer:

@@ -172,3 +172,12 @@ Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso dem
 - Nessun accesso automatico ad Amazon: è l'autore a guardare e copiare/fotografare la pagina.
 - Eseguito: typecheck, lint, **105/105** test, e2e demo 18/18, e2e accesso **10/10**.
 - **Non verificato:** estrazione e analisi immagini con il modello vero (solo finto provider) — da provare dal vivo.
+
+## Aggiornamento — dati di mercato via SerpApi (piano gratuito)
+
+- Nuovo fornitore `src/lib/providers/serpapi.ts`: ricerca Amazon ordinata per **Best Sellers** (`s=exact-aware-popularity-rank`), limitata alla categoria Libri del mercato (identificativi verificati sulla lista ufficiale SerpApi), sponsorizzati esclusi. `/api/market` sceglie il fornitore (Keepa se c'è la chiave, altrimenti SerpApi; `MARKET_PROVIDER` per forzare).
+- **Provato con una chiave reale** (1 ricerca, «orto sul balcone», amazon.it): 25 libri veri in ordine Best Sellers; formato dei campi confermato. Scoperte dai dati veri: molti libri senza recensioni (contati come 0) e nessun «acquistato nel mese» nelle nicchie piccole (la domanda resta alla stima IA); competizione calcolata sul 75° percentile delle recensioni.
+- Piano gratuito: 250 ricerche (dashboard SerpApi). Una analisi di nicchia = 1 ricerca; l'agente copertine = 1 ricerca + 3 immagini.
+- Eseguito: typecheck, lint, **113/113** test.
+- NB: la chiave è comparsa in uno screenshot in chat: va rigenerata da «Manage API key» di SerpApi e aggiornata su Railway.
+- SerpApi è un servizio di terzi che legge Amazon: scelta dell'autore, rischio dichiarato.
