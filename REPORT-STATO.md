@@ -155,3 +155,13 @@ Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso dem
 - Onestà: non sono dati di mercato; badge «Stima IA» ovunque; affidabilità limitata a ~30%; non sovrascrive mai dati osservati/importati/manuali; con il mock restituisce errore (non inventa valutazioni); il prompt vieta di citare volumi, BSR, vendite o prezzi reali e chiede una checklist di verifica manuale.
 - Dati veri: concorrenti inseriti a mano, CSV (Keepa/Helium 10/Publisher Rocket…). Adattatore Keepa API: non ancora fatto (richiede la tua chiave a pagamento).
 - Eseguito: typecheck, lint, **83/83** test, e2e demo **18/18**, e2e accesso **8/8** (con percentuali verificate nel browser: opportunità 60, affidabilità 30%, copertura 100%).
+
+## Aggiornamento — revisione applicabile, lingua, dati reali e concorrenti in automatico (Keepa)
+
+- **Revisione AI applicabile**: ogni suggerimento mostra problema e cosa fare **in italiano**, passaggio originale, versione proposta (nella lingua del libro) e traduzione italiana; «Applica» per uno o «Applica tutti». Prima di ogni modifica la versione attuale va in cronologia (ripristinabile). Se il passaggio non si trova con sicurezza non si tocca il testo. Test: `tests/review-apply.test.ts`.
+- **Lingua**: spiegazioni, rischi, motivazioni e checklist sempre in italiano; il prodotto (capitoli, descrizione, email, post, titoli in copertina) nella lingua del mercato scelto.
+- **Dati reali e concorrenti da soli (Keepa)**: `/api/market` cerca la keyword su Amazon via **Keepa API** (servizio a pagamento, nessuno scraping), ricava i libri con miglior Sales Rank, calcola domanda/competizione/economia (stato «Importato», metodologia dichiarata) e scarica le 3 copertine migliori per l'agente. Pulsanti: «Dati reali (Keepa)» nella nicchia; «Trova i 3 concorrenti migliori e analizza» nell'agente copertine. Il caricamento manuale di screenshot resta facoltativo.
+- Il Sales Rank è un indicatore **indiretto** di vendite, non il profitto: le soglie sono euristiche dichiarate (scala per mercato).
+- Eseguito: typecheck, lint, **100/100** test, e2e demo 18/18, e2e accesso **9/9** (con Keepa simulato: affidabilità 30% → 60%).
+- **NON verificato:** Keepa con una chiave reale (formato letto dalla documentazione ufficiale e provato solo contro un servizio finto); l'analisi di immagini da parte del modello vero.
+- Richiede: `KEEPA_API_KEY` sul server. Le copertine dei concorrenti sono scaricate (max 3 per analisi) dal CDN di Amazon con gli indirizzi forniti da Keepa; controlla che l'uso sia coerente con i termini di Keepa e di Amazon.

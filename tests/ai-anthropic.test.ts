@@ -142,6 +142,20 @@ describe('AI reale contro server finto compatibile Anthropic', () => {
     expect(err(ev)).toBeDefined();
   });
 
+  it('revisione: spiegazioni sempre in italiano, passaggio corretto nella lingua del libro, traduzione italiana', async () => {
+    const issue = { type: 'grammatica', excerpt: 'She go to the market every days.', problem: 'Errore di concordanza del verbo.', suggestion: 'Usa la terza persona singolare e il plurale corretto.', replacement: 'She goes to the market every day.', translationIt: 'Lei va al mercato ogni giorno.' };
+    behavior = { text: JSON.stringify({ issues: [issue], summary: 'Testo comprensibile con alcuni errori grammaticali.' }) };
+    const ev = await collect({ task: 'review', input: { brief: { ...brief, language: 'English' }, chapterTitle: 'Chapter 1', content: 'She go to the market every days. '.repeat(5) }, ...base });
+    expect(err(ev)).toBeUndefined();
+    const out = done(ev)!.data as { issues: { replacement: string; translationIt: string }[] };
+    expect(out.issues[0].replacement).toBe('She goes to the market every day.');
+    expect(out.issues[0].translationIt).toMatch(/Lei va al mercato/);
+    const prompt = JSON.stringify(seen[0].body.messages);
+    expect(prompt).toMatch(/SEMPRE IN ITALIANO/);
+    expect(prompt).toMatch(/nella lingua del libro \(English\)/);
+    expect(prompt).toMatch(/NON riscriverla e lascia replacement vuoto/);
+  });
+
   it('stima IA delle nicchie: risposta strutturata validata, un solo giro, prompt che vieta dati inventati', async () => {
     const sig = (value: number) => ({ value, why: 'giudizio qualitativo' });
     behavior = { text: JSON.stringify({ results: [{ id: 'n1', demand: sig(70), competition: sig(50), trend: sig(60), unitEconomics: sig(55), differentiation: sig(65), risks: ['r1'], verifyChecklist: ['c1'], summary: 's' }] }) };

@@ -1,10 +1,11 @@
 'use client';
 
-import { CheckCircle2, Eye, History, Lock, LockOpen, Pencil, Play, RotateCcw, Save, ShieldAlert, Sparkles, Square } from 'lucide-react';
+import { CheckCircle2, Eye, History, Lock, LockOpen, Pencil, Play, RotateCcw, Save, ShieldAlert, Sparkles, Square, Check } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Card, CardTitle, Empty, Notice, Progress, Textarea, useDebouncedSave, useToast } from '@/components/ui';
 import type { ReviewOutput } from '@/lib/ai/schemas';
 import { analyzeManuscript, containsMockText } from '@/lib/book/analysis';
+import { applyReplacement, locateExcerpt } from '@/lib/book/review-apply';
 import { markdownToXhtml } from '@/lib/book/markdown';
 import { callAi } from '@/lib/client-api';
 import { briefContext, generateChapter, logActivity, recordCost, saveRevision, spentUsd } from '@/lib/generation';
@@ -69,6 +70,7 @@ export function WriterTab({ project, chapters, niche, update, goTo }: TabProps) 
   const [running, setRunning] = useState<{ current: string; done: number; total: number } | null>(null);
   const [review, setReview] = useState<{ chapterId: string; data: ReviewOutput; provider: string } | null>(null);
   const [reviewing, setReviewing] = useState(false);
+  const [applied, setApplied] = useState<Set<number>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -149,12 +151,42 @@ export function WriterTab({ project, chapters, niche, update, goTo }: TabProps) 
     try {
       const done = await callAi({ task: 'review', input: { brief: briefContext(project, niche), chapterTitle: c.title.slice(0, 500), content: current.content.slice(0, 60000) }, projectId: project.id, spentUsd: await spentUsd(store, project.id), budgetUsd: project.budgetUsd }, { token: await getToken() });
       setReview({ chapterId: c.id, data: done.data as ReviewOutput, provider: done.provider });
+      setApplied(new Set());
       await recordCost(store, project.id, `Revisione AI: ${c.title}`, done);
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Revisione non riuscita.', 'bad');
     } finally {
       setReviewing(false);
     }
+  }
+
+  /** Applica uno o più suggerimenti: salva prima la versione attuale nella cronologia, poi sostituisce i passaggi. */
+  async function applySuggestions(c: Chapter, indexes: number[]) {
+    if (!review || review.chapterId !== c.id) return;
+    const current = await store.get('chapters', c.id);
+    if (!current) return;
+    if (current.status === 'locked' || current.status === 'generating') return toast('Il capitolo è bloccato o in generazione: sbloccalo per applicare le modifiche.', 'bad');
+    let content = current.content;
+    const done = new Set(applied);
+    const failed: number[] = [];
+    for (const n of indexes) {
+      const issue = review.data.issues[n];
+      const next = issue ? applyReplacement(content, issue.excerpt, issue.replacement) : null;
+      if (next === null) failed.push(n);
+      else {
+        content = next;
+        done.add(n);
+      }
+    }
+    if (content !== current.content) {
+      await saveRevision(store, current, 'salvataggio');
+      await store.put('chapters', { ...current, content, status: current.status === 'reviewed' ? 'generated' : current.status, updatedAt: nowIso() });
+      await logActivity(store, project.id, `Revisione AI: applicati ${indexes.length - failed.length} suggerimenti al capitolo ${c.position} «${c.title}» (versione precedente in cronologia).`);
+      setApplied(done);
+      setNonce((x) => x + 1);
+    }
+    if (failed.length) toast(`${failed.length === 1 ? 'Un passaggio non è stato trovato' : `${failed.length} passaggi non sono stati trovati`} nel testo (forse l'hai già modificato): correggilo a mano.`, 'info');
+    else toast(`Applicato${indexes.length > 1 ? ` (${indexes.length} modifiche)` : ''}. La versione precedente è nella cronologia: puoi ripristinarla.`, 'ok');
   }
 
   if (!chapters.length) return <Empty title="Nessun capitolo">Crea prima l’indice. <button className="font-medium text-cyan underline" onClick={() => goTo('indice')}>Vai all’indice</button></Empty>;
@@ -278,15 +310,46 @@ export function WriterTab({ project, chapters, niche, update, goTo }: TabProps) 
                   <div className="mt-4 border-t border-line pt-3">
                     <p className="text-sm font-semibold text-ink">Revisione AI {review.provider === 'mock' && <Badge tone="warn">mock</Badge>}</p>
                     <p className="mt-1 text-sm text-ink">{review.data.summary}</p>
-                    <ul className="mt-2 space-y-2">
-                      {review.data.issues.map((i, n) => (
-                        <li key={n} className="rounded-lg border border-line p-2 text-sm">
-                          <Badge tone="gold">{i.type}</Badge> <span>{i.problem}</span>
-                          <p className="mt-1 text-xs italic text-slate2">«{i.excerpt}»</p>
-                          <p className="mt-1 text-xs text-ink">Suggerimento: {i.suggestion}</p>
-                        </li>
-                      ))}
-                    </ul>
+                    {review.data.issues.length === 0 ? (
+                      <p className="mt-2 text-sm text-slate2">Nessun problema da segnalare.</p>
+                    ) : (
+                      <>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Button size="sm" disabled={active.status === 'locked' || review.data.issues.every((i, n) => applied.has(n) || !i.replacement.trim() || locateExcerpt(active.content, i.excerpt) === null)} onClick={() => void applySuggestions(active, review.data.issues.map((_, n) => n).filter((n) => !applied.has(n) && review.data.issues[n].replacement.trim()))}>
+                            <Check className="size-4" aria-hidden /> Applica tutti i suggerimenti
+                          </Button>
+                          <span className="text-xs text-slate2">Ogni modifica salva prima la versione attuale nella cronologia.</span>
+                        </div>
+                        <ul className="mt-3 space-y-3">
+                          {review.data.issues.map((i, n) => {
+                            const found = locateExcerpt(active.content, i.excerpt) !== null;
+                            const canApply = Boolean(i.replacement.trim()) && found && !applied.has(n) && active.status !== 'locked';
+                            return (
+                              <li key={n} className="rounded-lg border border-line bg-card2 p-3 text-sm">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <Badge tone="gold">{{ stile: 'Stile', grammatica: 'Grammatica', struttura: 'Struttura', fatti: 'Fatti da verificare' }[i.type] ?? i.type}</Badge>
+                                  {applied.has(n) ? <Badge tone="ok">Applicato ✓</Badge> : <Button size="sm" variant="outline" disabled={!canApply} onClick={() => void applySuggestions(active, [n])}>Applica</Button>}
+                                </div>
+                                <p className="mt-2 text-ink"><strong>Problema:</strong> {i.problem}</p>
+                                <p className="mt-1 text-ink"><strong>Cosa fare:</strong> {i.suggestion}</p>
+                                <p className="mt-2 text-xs font-semibold text-slate2">Passaggio originale</p>
+                                <p className="rounded bg-white/5 p-2 text-xs italic text-ink/90">«{i.excerpt}»</p>
+                                {i.replacement.trim() ? (
+                                  <>
+                                    <p className="mt-2 text-xs font-semibold text-ok">Versione proposta (nella lingua del libro)</p>
+                                    <p className="rounded bg-ok/10 p-2 text-xs text-ink">{i.replacement}</p>
+                                    {i.translationIt.trim() && <p className="mt-1 text-xs text-slate2"><strong className="text-ink">In italiano:</strong> {i.translationIt}</p>}
+                                  </>
+                                ) : (
+                                  <p className="mt-2 text-xs text-warn">Nessuna riscrittura automatica: va verificato o corretto a mano.</p>
+                                )}
+                                {i.replacement.trim() && !found && !applied.has(n) && <p className="mt-1 text-xs text-warn">Non trovo questo passaggio nel testo attuale (forse l’hai già modificato).</p>}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </>
+                    )}
                   </div>
                 )}
               </Card>

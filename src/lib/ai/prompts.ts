@@ -23,7 +23,7 @@ export function brainstormPrompt(i: { theme: string; audience: string; marketpla
   return `Genera 12 IPOTESI di nicchie e micro-nicchie per libri su ${i.marketplace} (lingua: ${i.language}).
 Tema di partenza: ${i.theme}
 ${i.audience ? `Pubblico indicato: ${i.audience}\n` : ''}${i.category ? `Categoria di interesse: ${i.category}\n` : ''}
-Per ogni ipotesi indica: keyword principale, chi compra e perché, 3-5 keyword secondarie, bisogno non soddisfatto, 2-3 differenziatori editoriali, rischi (affidabilità, competenze richieste, marchi, temi sensibili).
+Per ogni ipotesi indica: keyword principale e 3-5 keyword secondarie (nella lingua del mercato ${i.language}), poi chi compra e perché, bisogno non soddisfatto, 2-3 differenziatori editoriali e rischi (affidabilità, competenze richieste, marchi, temi sensibili): questi ultimi campi SEMPRE IN ITALIANO, perché li legge l'autore.
 NON fornire volumi di ricerca, vendite, BSR, prezzi o qualunque numero di mercato: sono ipotesi da verificare con dati reali.`;
 }
 
@@ -61,9 +61,16 @@ Lunghezza: circa ${i.chapter.targetWords} parole. Formato: Markdown, senza ripet
 
 export function reviewPrompt(b: BriefCtx, title: string, content: string): string {
   return `Brief:\n${briefBlock(b)}
-Rivedi il capitolo "${title}" qui sotto. Segnala al massimo 12 problemi concreti, classificati come: stile, grammatica, struttura, fatti.
-Per "fatti" segnala le affermazioni che richiedono una fonte o una verifica: NON proporre fonti inventate, indica solo cosa va verificato.
-Per ogni problema riporta l'estratto esatto (max 200 caratteri), il problema e la correzione suggerita. Chiudi con un giudizio sintetico di 2-3 frasi. Non certificare l'originalità del testo.
+Rivedi il capitolo "${title}" qui sotto. Il capitolo è scritto nella lingua del libro (${b.language}); l'autore legge in italiano.
+Segnala al massimo 12 problemi concreti, classificati come: stile, grammatica, struttura, fatti.
+Per ogni problema riporta:
+- excerpt: l'estratto ESATTO copiato dal capitolo (carattere per carattere, max 200 caratteri, senza modificarlo né abbreviarlo con puntini);
+- problem: cosa non va, spiegato SEMPRE IN ITALIANO;
+- suggestion: cosa fare, spiegato SEMPRE IN ITALIANO;
+- replacement: il passaggio corretto, scritto nella lingua del libro (${b.language}), che sostituisce esattamente l'estratto (stesso formato Markdown). Se il problema è un'affermazione che richiede una fonte o una verifica, NON riscriverla e lascia replacement vuoto;
+- translationIt: la traduzione italiana di replacement, per far capire all'autore cosa verrebbe inserito (stringa vuota se il libro è già in italiano o se replacement è vuoto).
+Per "fatti" segnala le affermazioni che richiedono una fonte o una verifica: NON proporre fonti inventate, indica solo cosa va verificato (in italiano).
+Chiudi con summary: un giudizio sintetico di 2-3 frasi, SEMPRE IN ITALIANO. Non certificare l'originalità del testo.
 
 --- CAPITOLO ---
 ${content}`;
@@ -72,7 +79,7 @@ ${content}`;
 export function marketingPrompt(b: BriefCtx, authorName: string, currentDescription: string): string {
   return `Brief del libro:\n${briefBlock(b)}Autore: ${authorName.trim() || '(da indicare)'}
 ${currentDescription.trim() ? `Descrizione attuale (migliorala, non copiarla):\n${currentDescription.trim()}\n` : ''}
-Prepara il KIT MARKETING per il lancio manuale di questo libro su Amazon KDP. Rispetta SEMPRE queste regole:
+Prepara il KIT MARKETING per il lancio manuale di questo libro su Amazon KDP. LINGUA: i testi destinati ai lettori (hook, amazonDescription, bullets, aPlus, authorBio, emails, posts) vanno scritti nella lingua del libro (${b.language}); angolazioni per gli annunci (adAngles) e checklist (launchChecklist), che leggerà solo l'autore, in italiano. Rispetta SEMPRE queste regole:
 - NIENTE testimonianze, recensioni, premi, "bestseller", "n. 1", statistiche, percentuali o numeri di vendita. Se servirebbe una prova, scrivi [DA VERIFICARE: cosa serve].
 - NIENTE promesse di risultati, guadagni, guarigioni o tempi garantiti. Descrivi cosa il lettore trova nel libro, non cosa otterrà per certo.
 - Per la biografia dell'autore NON inventare titoli di studio, esperienze, premi o numeri: usa solo il nome indicato e segnaposto [DA COMPLETARE: ...] per ogni fatto personale.
@@ -124,7 +131,7 @@ ${coverContext(i, playbook)}
 ${i.hasImages ? 'Sopra trovi le copertine dei concorrenti (screenshot forniti dall\'autore). Analizzale davvero: colori dominanti, tipo di immagine (fotografia, illustrazione, tipografica), trattamento del titolo, densità, cosa le rende simili fra loro e quali VUOTI visivi restano liberi.' : 'Non ci sono immagini dei concorrenti: basati sul testo e sulla tua conoscenza generale del genere, e dichiaralo in basedOn come «solo_testo_e_conoscenze_generali». Non descrivere come reali copertine che non hai visto.'}
 ${i.previous.trim() ? `\nProposta precedente (JSON): ${i.previous.trim()}\nFeedback dell'autore da integrare: ${i.feedback.trim() || '(nessuno)'}\nRielabora: cambia ciò che il feedback chiede e spiega cosa è cambiato.` : ''}
 
-Compito: proponi esattamente 3 concept DIVERSI fra loro. Per ciascuno: un nome, la motivazione (perché funziona per QUESTO pubblico e QUESTA nicchia), come si distingue dai concorrenti pur restando riconoscibile (standOut), il layout, lo sfondo del catalogo (artId) OPPURE, solo se nessuno va bene, un customArtPrompt in inglese per generarne uno (senza testo né persone; lascia artId vuoto), palette esadecimale con testo ad alto contrasto, il font, come spezzare il titolo in righe (titleLines), un'eventuale frase di richiamo, come verificarlo in miniatura (thumbnailTest) e i rischi onesti (risks).
+LINGUA: tutte le spiegazioni (marketReading, audienceInsight, rationale, standOut, thumbnailTest, risks, recommendationReason, checklist) SEMPRE IN ITALIANO; titleLines e taglineSuggestion nella lingua del libro; customArtPrompt in inglese.\nCompito: proponi esattamente 3 concept DIVERSI fra loro. Per ciascuno: un nome, la motivazione (perché funziona per QUESTO pubblico e QUESTA nicchia), come si distingue dai concorrenti pur restando riconoscibile (standOut), il layout, lo sfondo del catalogo (artId) OPPURE, solo se nessuno va bene, un customArtPrompt in inglese per generarne uno (senza testo né persone; lascia artId vuoto), palette esadecimale con testo ad alto contrasto, il font, come spezzare il titolo in righe (titleLines), un'eventuale frase di richiamo, come verificarlo in miniatura (thumbnailTest) e i rischi onesti (risks).
 Poi indica recommendedIndex (0-2) e la motivazione, una checklist di verifica in miniatura (thumbnailChecklist) e la lettura del mercato (marketReading). Le tue sono IPOTESI: nessuna garanzia di vendita.`;
 }
 
@@ -134,7 +141,7 @@ export function coverCritiquePrompt(i: { brief: BriefCtx; nicheNotes: string; no
 ${coverContext(i, playbook)}
 La PRIMA immagine è la NOSTRA copertina da valutare.${i.hasCompetitors ? ' Le altre sono copertine di concorrenti: confrontala con loro come in una pagina di risultati di Amazon.' : ' Non ci sono concorrenti da confrontare: valutala per leggibilità, riconoscibilità del genere e qualità.'}
 ${i.feedback.trim() ? `Commento dell'autore: ${i.feedback.trim()}\n` : ''}
-Compito: dai un verdetto sintetico e onesto (verdict), dì se si distingue fra i concorrenti (standsOut) e se il titolo si legge in miniatura (readability), elenca i punti di forza e i problemi concreti, poi proponi UN concept migliorato (improvedConcept) che risolve i problemi: stesso formato dei concept (layout, artId del catalogo oppure customArtPrompt, palette, font, righe del titolo, ecc.). Se la copertina va già bene, migliora solo i dettagli e dillo. Sono ipotesi, non previsioni di vendita.`;
+LINGUA: verdetto, spiegazioni, punti di forza e problemi SEMPRE IN ITALIANO; titleLines e taglineSuggestion nella lingua del libro; customArtPrompt in inglese.\nCompito: dai un verdetto sintetico e onesto (verdict), dì se si distingue fra i concorrenti (standsOut) e se il titolo si legge in miniatura (readability), elenca i punti di forza e i problemi concreti, poi proponi UN concept migliorato (improvedConcept) che risolve i problemi: stesso formato dei concept (layout, artId del catalogo oppure customArtPrompt, palette, font, righe del titolo, ecc.). Se la copertina va già bene, migliora solo i dettagli e dillo. Sono ipotesi, non previsioni di vendita.`;
 }
 
 export function nicheScorePrompt(i: { items: { id: string; keyword: string; buyerPersona: string; category: string; marketplace: string; secondaryKeywords: string[]; notes: string }[]; language: string }): string {
@@ -152,5 +159,5 @@ Segnali (tutti 0-100):
 - differentiation: quanto è possibile distinguersi con un angolo editoriale originale e accurato, senza rischi di competenze mediche/legali/finanziarie non verificabili (100 = molto differenziabile e a basso rischio).
 Per ogni segnale scrivi "why": una frase onesta sul ragionamento e sull'incertezza.
 Per ogni nicchia aggiungi: risks (2-4 rischi concreti, es. temi sensibili che richiedono revisione di un professionista), verifyChecklist (3-5 cose da verificare a mano su Amazon prima di investire: es. quanti libri recenti con molte recensioni, prezzi tipici, copertine dominanti, se ci sono libri in pagina uno con poche recensioni), summary (2 frasi, con il limite dichiarato: giudizio non basato su dati reali).
-Mantieni gli id esatti forniti. Niente promesse di vendite o guadagni.`;
+Scrivi tutte le motivazioni (why), i rischi, la checklist e il summary SEMPRE IN ITALIANO, perché li legge l'autore. Mantieni gli id esatti forniti. Niente promesse di vendite o guadagni.`;
 }

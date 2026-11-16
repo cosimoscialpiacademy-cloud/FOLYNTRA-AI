@@ -47,6 +47,10 @@ export const ReviewInput = z.object({ brief: BriefCtx, chapterTitle: short, cont
 export const ReviewOutput = z.object({
   issues: z.array(z.object({
     type: z.enum(['stile', 'grammatica', 'struttura', 'fatti']), excerpt: z.string(), problem: z.string(), suggestion: z.string(),
+    /** Il passaggio corretto, nella lingua del libro, da sostituire a `excerpt`. Vuoto se serve una verifica o una fonte e non una riscrittura. */
+    replacement: z.string(),
+    /** Traduzione italiana della versione proposta (vuota se il libro è già in italiano o se non c'è sostituzione). */
+    translationIt: z.string(),
   })),
   summary: z.string(),
 });

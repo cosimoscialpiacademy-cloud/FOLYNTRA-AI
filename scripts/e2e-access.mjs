@@ -19,7 +19,12 @@ if (!exe) throw new Error('Chromium non trovato: imposta CHROMIUM_EXECUTABLE_PAT
 const upstream = [];
 const brainstorm = { ideas: Array.from({ length: 3 }, (_, i) => ({ keyword: `Idea reale di prova ${i + 1}`, buyerPersona: 'Persona di prova', secondaryKeywords: ['a', 'b', 'c'], unmetNeed: 'Bisogno di prova', differentiators: ['d1', 'd2'], risks: ['r1'] })) };
 const sig = (value) => ({ value, why: 'giudizio qualitativo di prova' });
+const keepaProduct = (asin, bsr, reviews) => ({ asin, title: `Libro di prova ${asin}`, numberOfPages: 160, binding: 'Paperback', publicationDate: 20240101, images: [{ variant: 'MAIN', l: `${asin}.jpg` }], stats: { current: [-1, 1499, -1, bsr, ...Array(12).fill(-1), 44, reviews] } });
 const fake = createServer(async (req, res) => {
+  if (req.method === 'GET' && req.url?.startsWith('/search')) {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return void res.end(JSON.stringify({ tokensLeft: 99, products: [keepaProduct('BTEST00001', 2500, 180), keepaProduct('BTEST00002', 5200, 90), keepaProduct('BTEST00003', 9000, 40)] }));
+  }
   let s = '';
   for await (const c of req) s += c;
   const body = JSON.parse(s);
@@ -37,7 +42,7 @@ await new Promise((r) => fake.listen(0, '127.0.0.1', r));
 const fakePort = fake.address().port;
 
 const app = spawn(path.resolve('node_modules/.bin/next'), ['start', '-p', String(PORT), '-H', '127.0.0.1'], {
-  env: { ...process.env, ANTHROPIC_API_KEY: 'sk-ant-finta-solo-test', ANTHROPIC_BASE_URL: `http://127.0.0.1:${fakePort}`, ENABLE_EXTERNAL_PAID_APIS: 'true', APP_ACCESS_CODE: CODE, NEXT_PUBLIC_SUPABASE_URL: '', NEXT_PUBLIC_SUPABASE_ANON_KEY: '' },
+  env: { ...process.env, KEEPA_API_KEY: 'keepa-finta-solo-test', KEEPA_BASE_URL: `http://127.0.0.1:${fakePort}`, ANTHROPIC_API_KEY: 'sk-ant-finta-solo-test', ANTHROPIC_BASE_URL: `http://127.0.0.1:${fakePort}`, ENABLE_EXTERNAL_PAID_APIS: 'true', APP_ACCESS_CODE: CODE, NEXT_PUBLIC_SUPABASE_URL: '', NEXT_PUBLIC_SUPABASE_ANON_KEY: '' },
   stdio: 'ignore',
 });
 const stop = () => { app.kill(); fake.close(); };
@@ -121,6 +126,23 @@ try {
     assert(upstream.every((u) => !String(u.auth ?? '').includes(CODE)), 'il codice di accesso è finito al provider');
     await page.screenshot({ path: path.join(OUT, '03-brainstorm-reale.png'), fullPage: true });
     return `opportunità ${score}% · affidabilità ${conf}% · copertura ${cov}% · 2 chiamate`;
+  });
+
+  await step('Dati reali (Keepa) dal dettaglio nicchia: concorrenti e segnali importati, affidabilità sopra il 30% delle sole stime IA', async () => {
+    const row = page.locator('tr', { hasText: 'Idea reale di prova 1' });
+    await row.getByRole('button', { name: 'Apri' }).click();
+    await page.getByRole('button', { name: /Dati reali \(Keepa\)/ }).click();
+    await page.getByText(/Dati reali importati da Keepa \(3 libri\)/).waitFor({ timeout: 20000 });
+    await page.getByText('Libro di prova BTEST00001').first().waitFor({ timeout: 10000 });
+    await page.waitForTimeout(1800); // salvataggio ritardato
+    const cells = (await row.innerText()).replace(/\s+/g, ' ');
+    const m = cells.match(/(\d+)\s*(?:Stima IA)?\s*(\d+)%\s*(\d+)%/);
+    assert(m, `riga senza percentuali: ${cells}`);
+    const conf = Number(m[2]);
+    assert(conf > 30, `affidabilità attesa > 30% con dati reali, trovata ${conf}%`);
+    assert(!JSON.stringify(upstream).includes('keepa-finta'), 'la chiave Keepa è finita altrove');
+    await page.screenshot({ path: path.join(OUT, '04-dati-reali-keepa.png'), fullPage: true });
+    return `affidabilità ${conf}% (da 30%)`;
   });
 
   await step('Il codice resta salvato solo sul dispositivo; “Blocca” lo cancella e richiede di nuovo il codice', async () => {

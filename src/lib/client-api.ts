@@ -89,6 +89,21 @@ export async function callExport(format: 'kit' | 'interior', bundle: BookBundle,
   };
 }
 
+export interface MarketResponse {
+  books: import('./providers/keepa').MarketBook[];
+  signals: Partial<Record<import('./types').SignalKey, import('./types').Metric>>;
+  covers: { asin: string; rank: number; note: string; mediaType: 'image/jpeg'; data: string }[];
+  tokensLeft: number | null;
+  fetchedAt: string;
+}
+
+/** Dati reali di mercato (Keepa) per una keyword; con covers=true anche le 3 copertine dei libri che vendono meglio. */
+export async function callMarket(keyword: string, marketplace: string, covers: boolean, token: string | null): Promise<MarketResponse> {
+  const res = await fetch('/api/market', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders(token) }, body: JSON.stringify({ keyword, marketplace, covers }) });
+  if (!res.ok) throw new Error(await errorMessage(res));
+  return (await res.json()) as MarketResponse;
+}
+
 /** Disegna il fronte della copertina come JPEG (per mostrarlo in miniatura e farlo valutare all'agente). */
 export async function callCoverImage(cover: unknown, token: string | null): Promise<Blob> {
   const res = await fetch('/api/cover', { method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders(token) }, body: JSON.stringify({ cover }) });

@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import { Badge, Button, Card, CardTitle, Field, Input, Notice, Textarea, useToast } from '@/components/ui';
 import type { CoverConcept, CoverCritiqueOutput, CoverStrategyOutput } from '@/lib/ai/schemas';
 import { ART_TEMPLATES, COVER_ART, artById } from '@/lib/cover-art';
-import { callAi, callCoverImage } from '@/lib/client-api';
+import { callAi, callCoverImage, callMarket } from '@/lib/client-api';
 import { frontCoverSvg } from '@/lib/export/cover-svg';
 import { briefContext, logActivity, recordCost, spentUsd } from '@/lib/generation';
 import { blobToJpegBase64, prepareCompetitorShot } from '@/lib/image-upload';
@@ -73,7 +73,7 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
   const store = useStore();
   const { getToken, status } = useApp();
   const toast = useToast();
-  const [busy, setBusy] = useState<'strategy' | 'critique' | null>(null);
+  const [busy, setBusy] = useState<'strategy' | 'critique' | 'market' | null>(null);
   const [feedback, setFeedback] = useState('');
   const [thumb, setThumb] = useState<160 | 110 | 70>(110);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -99,21 +99,21 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  const baseInput = (previous: CoverStrategyOutput | null, fb: string) => ({
+  const baseInput = (previous: CoverStrategyOutput | null, fb: string, shotList: CompetitorShot[] = cb.competitors) => ({
     brief: briefContext(project, niche),
     nicheNotes: nicheNotes(niche).slice(0, 3000),
     notes: cb.notes.slice(0, 1500),
     feedback: fb.slice(0, 1500),
     previous: previous ? JSON.stringify(previous).slice(0, 12000) : '',
-    competitors: cb.competitors.map((s) => ({ mediaType: 'image/jpeg' as const, data: s.data, note: s.note.slice(0, 200) })),
+    competitors: shotList.map((s) => ({ mediaType: 'image/jpeg' as const, data: s.data, note: s.note.slice(0, 200) })),
     catalog: COVER_ART.map((a) => ({ id: a.id, name: a.name, tone: a.tone, suits: a.suits })),
     currentCover: { template: cover.template, artId: cover.art?.id ?? '', title: cover.title.slice(0, 300), fontName: cover.titleFont },
   });
 
-  async function runStrategy(withFeedback: boolean) {
+  async function runStrategy(withFeedback: boolean, shotList?: CompetitorShot[]) {
     setBusy('strategy');
     try {
-      const done = await callAi({ task: 'cover', input: baseInput(withFeedback ? cb.strategy : null, withFeedback ? feedback : ''), projectId: project.id, spentUsd: await spentUsd(store, project.id), budgetUsd: project.budgetUsd }, { token: await getToken() });
+      const done = await callAi({ task: 'cover', input: baseInput(withFeedback ? cb.strategy : null, withFeedback ? feedback : '', shotList), projectId: project.id, spentUsd: await spentUsd(store, project.id), budgetUsd: project.budgetUsd }, { token: await getToken() });
       setCb({ strategy: done.data as CoverStrategyOutput, strategyIsMock: done.provider === 'mock' });
       await recordCost(store, project.id, 'Agente copertine: strategia', done);
       await logActivity(store, project.id, `Agente copertine: ${withFeedback ? 'strategia rielaborata' : 'strategia generata'} (${done.provider === 'mock' ? 'mock dichiarato' : done.model}).`);
@@ -122,6 +122,24 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Analisi non riuscita.', 'bad');
     } finally {
+      setBusy(null);
+    }
+  }
+
+  /** Cerca da solo, via Keepa, i 3 libri che vendono meglio per la keyword della nicchia e li fa analizzare all'agente. */
+  async function findAndAnalyze() {
+    const keyword = niche?.keyword || project.kdp.keywords.find((k) => k.trim()) || project.title;
+    setBusy('market');
+    try {
+      const r = await callMarket(keyword, project.marketplace, true, await getToken());
+      if (!r.covers.length) throw new Error('Ho trovato dei libri ma non sono riuscito a scaricarne le copertine: riprova o caricale a mano.');
+      const shots: CompetitorShot[] = r.covers.map((c) => ({ id: c.asin, data: c.data, note: c.note }));
+      setCb({ competitors: shots });
+      toast(`Trovati i ${shots.length} libri che vendono meglio per «${keyword}». Ora li analizzo…`, 'ok');
+      setBusy(null);
+      await runStrategy(false, shots);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Ricerca dei concorrenti non riuscita.', 'bad');
       setBusy(null);
     }
   }
@@ -166,8 +184,15 @@ export function CoverAgent({ project, niche, update }: Pick<TabProps, 'project' 
         <p className="text-sm text-slate2">Un agente che lavora con te sulla copertina: confronta i concorrenti della nicchia, propone 3 concept, valuta la copertina che stai costruendo e la rielabora con i tuoi commenti. Sono <strong className="text-ink">ipotesi da verificare</strong>, non garanzie di vendita.</p>
         {status?.ai.mode === 'mock' && <Notice tone="warn" className="mt-3">AI non collegata: l’agente risponde con segnaposto dichiarati (mock). Con la chiave Anthropic analizza davvero le immagini dei concorrenti.</Notice>}
 
+        <div className="mt-4 rounded-xl border border-cyan/30 bg-cyan/5 p-3">
+          <p className="text-sm font-semibold text-ink">Automatico: trova da solo i concorrenti che vendono</p>
+          <p className="mt-0.5 text-xs text-slate2">Cerca la keyword della tua nicchia su Amazon (via Keepa), prende i <strong className="text-ink">3 libri con il miglior Sales Rank</strong> (un indicatore indiretto di vendite, non del profitto reale), ne guarda le copertine e propone concept per fare meglio.</p>
+          <Button className="mt-2" variant="primary" onClick={() => void findAndAnalyze()} loading={busy === 'market'} disabled={busy !== null || !status?.providers.keepa}><Search className="size-4" aria-hidden /> Trova i 3 concorrenti migliori e analizza</Button>
+          {!status?.providers.keepa && <p className="mt-2 text-xs text-warn">Non ancora attivo: serve un piano API di Keepa (servizio a pagamento) e la variabile <code>KEEPA_API_KEY</code> sul server. Nel frattempo puoi caricare tu le copertine qui sotto.</p>}
+        </div>
+
         <div className="mt-4">
-          <p className="text-sm font-semibold text-ink">1 · Copertine dei concorrenti <span className="font-normal text-slate2">(fino a {MAX_SHOTS})</span></p>
+          <p className="text-sm font-semibold text-ink">1 · Copertine dei concorrenti <span className="font-normal text-slate2">(fino a {MAX_SHOTS}) · oppure caricale tu</span></p>
           <p className="text-xs text-slate2">Fai uno screenshot dei risultati di Amazon per la tua parola chiave e carica le copertine dei libri che vendono meglio. Nessuno scraping: le immagini le fornisci tu e restano nel tuo archivio.</p>
           <div className="mt-2 flex flex-wrap gap-3">
             {shots.map((s) => (
