@@ -25,7 +25,7 @@ export async function withBrowser<T>(fn: (browser: Browser) => Promise<T>): Prom
   if (!executablePath) {
     throw new RendererUnavailableError('Chromium non trovato: imposta CHROMIUM_EXECUTABLE_PATH con il percorso di Chrome/Chromium sul server.');
   }
-  const browser = await chromium.launch({ executablePath, args: ['--no-sandbox', '--font-render-hinting=none'] });
+  const browser = await chromium.launch({ executablePath, args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--font-render-hinting=none'] });
   try {
     return await fn(browser);
   } finally {

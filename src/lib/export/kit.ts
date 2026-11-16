@@ -2,6 +2,7 @@
  * KDP PUBLISH KIT: produce tutti i file, esegue il QA e crea lo ZIP con
  * manifest SHA-256. Non pubblica nulla: il caricamento su KDP è manuale.
  */
+import { marketingToMarkdown } from '../book/marketing';
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -178,6 +179,7 @@ export async function buildKit(bundle: BookBundle, browser: Browser, now = new D
     ['diritti.md', rights],
     ['kdp-checklist.md', checklist],
     ['guida-caricamento-kdp.md', guide],
+    ...(project.marketing ? ([['marketing/kit-marketing.md', marketingToMarkdown(project, project.marketing)]] as [string, string][]) : []),
     ['qa-report.md', qaMd],
     ['qa-report.json', JSON.stringify({ stato, kdpReady: qa.kdpReady, checks: qa.checks, issues: qa.issues }, null, 2)],
   ];

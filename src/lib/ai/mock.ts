@@ -4,7 +4,7 @@
  * chiaramente marcato, che il QA blocca come "non pubblicabile".
  */
 import { MOCK_MARKER } from '../book/analysis';
-import type { BrainstormOutput, ChapterInput, ConceptOutput, OutlineOutput, ReviewOutput, BriefCtx } from './schemas';
+import type { BrainstormOutput, ChapterInput, ConceptOutput, MarketingOutput, OutlineOutput, ReviewOutput, BriefCtx } from './schemas';
 
 export const MOCK_MODEL = 'mock-dichiarato';
 
@@ -93,5 +93,26 @@ export function mockReview(): ReviewOutput {
   return {
     issues: [],
     summary: 'Revisione AI non eseguita: è attivo il mock. Sono comunque disponibili i controlli automatici locali (segnaposto, duplicati, fonti, indice).',
+  };
+}
+
+/** Kit marketing segnaposto: ogni testo porta il marcatore MOCK e nessun dato inventato. */
+export function mockMarketing(b: BriefCtx, authorName: string): MarketingOutput {
+  const t = topicOf(b);
+  const tag = `[${MOCK_MARKER}]`;
+  return {
+    hook: `${tag} Frase di posizionamento segnaposto per «${t}».`,
+    amazonDescription: `${tag} Descrizione segnaposto per «${t}». Configura la chiave Anthropic per ottenere una bozza reale oppure scrivila tu.`,
+    bullets: Array.from({ length: 5 }, (_, i) => `${tag} Punto ${i + 1} segnaposto: cosa trova il lettore nel libro.`),
+    aPlus: Array.from({ length: 4 }, (_, i) => ({ title: `${tag} Modulo ${i + 1}`, body: 'Testo segnaposto del modulo A+.', imageIdea: 'Idea immagine segnaposto: da far realizzare all’autore.' })),
+    authorBio: `${tag} ${authorName.trim() || 'L’autore'} [DA COMPLETARE: chi sei, cosa ti qualifica, perché questo libro].`,
+    emails: [
+      { subject: `${tag} Annuncio`, body: 'Testo segnaposto dell’email di annuncio.', sendWhen: 'Giorno del lancio' },
+      { subject: `${tag} Approfondimento`, body: 'Testo segnaposto dell’email di approfondimento.', sendWhen: 'Tre giorni dopo il lancio' },
+      { subject: `${tag} Promemoria`, body: 'Testo segnaposto dell’ultimo promemoria.', sendWhen: 'Una settimana dopo il lancio' },
+    ],
+    posts: ['Instagram', 'Facebook', 'LinkedIn', 'X', 'TikTok (copione)', 'Pinterest'].map((platform) => ({ platform, text: `${tag} Post segnaposto per ${platform}.`, hashtags: ['#segnaposto'] })),
+    adAngles: Array.from({ length: 5 }, (_, i) => `${tag} Angolazione ${i + 1} segnaposto per un annuncio manuale.`),
+    launchChecklist: ['Rileggi tutto il libro', 'Conferma di aver riveduto ogni capitolo', 'Carica i file su KDP e controlla il Previewer', 'Prepara la tua lista contatti', 'Sostituisci ogni testo segnaposto', 'Verifica ogni [DA VERIFICARE]', 'Pianifica le email', 'Prepara i post', 'Valuta un piccolo test Ads manuale', 'Annota i risultati reali'].map((x) => `${tag} ${x}`),
   };
 }

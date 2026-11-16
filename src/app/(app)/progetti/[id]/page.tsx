@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { BriefTab } from '@/components/project/brief-tab';
 import { KitTab } from '@/components/project/kit-tab';
+import { MarketingTab } from '@/components/project/marketing-tab';
 import { SalesTab } from '@/components/project/sales-tab';
 import { OutlineTab } from '@/components/project/outline-tab';
 import { StudioTab } from '@/components/project/studio-tab';
@@ -21,7 +22,7 @@ import { cn, nowIso } from '@/lib/utils';
 function Workspace({ initial }: { initial: Project }) {
   const store = useStore();
   const [project, setProject] = useState(initial);
-  const [tab, setTab] = useState<TabKey>(() => (typeof window !== 'undefined' && (['brief', 'indice', 'scrittura', 'studio', 'kit', 'vendite'] as const).find((t) => `#${t}` === window.location.hash)) || 'brief');
+  const [tab, setTab] = useState<TabKey>(() => (typeof window !== 'undefined' && (['brief', 'indice', 'scrittura', 'studio', 'kit', 'marketing', 'vendite'] as const).find((t) => `#${t}` === window.location.hash)) || 'brief');
   const chapters = useLive('chapters', project.id);
   const exports = useLive('exports', project.id);
   const niches = useLive('niches');
@@ -86,6 +87,10 @@ function Workspace({ initial }: { initial: Project }) {
               {s.label}
             </button>
           ))}
+          <button role="tab" aria-selected={tab === 'marketing'} onClick={() => goTo('marketing')}
+            className={cn('flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors', tab === 'marketing' ? 'border-cyan text-ink' : 'border-transparent text-slate2 hover:text-ink')}>
+            Marketing
+          </button>
           <button role="tab" aria-selected={tab === 'vendite'} onClick={() => goTo('vendite')}
             className={cn('flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors', tab === 'vendite' ? 'border-cyan text-ink' : 'border-transparent text-slate2 hover:text-ink')}>
             Ads &amp; Royalties
@@ -101,6 +106,7 @@ function Workspace({ initial }: { initial: Project }) {
         {tab === 'scrittura' && <WriterTab {...props} />}
         {tab === 'studio' && <StudioTab {...props} />}
         {tab === 'kit' && <KitTab {...props} />}
+        {tab === 'marketing' && <MarketingTab {...props} />}
         {tab === 'vendite' && <SalesTab {...props} />}
       </div>
     </>

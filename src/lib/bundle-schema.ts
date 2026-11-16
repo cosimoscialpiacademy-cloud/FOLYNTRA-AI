@@ -37,6 +37,13 @@ export const BundleSchema = z.object({
     }),
     budgetUsd: z.number(),
     pageCount: z.number().int().nullable(),
+    marketing: z.object({
+      generatedBy: z.enum(['mock', 'anthropic', 'human']), generatedAt: s(40), hook: s(2000), amazonDescription: s(8000), bullets: z.array(s(1000)).max(30), authorBio: s(4000),
+      aPlus: z.array(z.object({ title: s(400), body: s(4000), imageIdea: s(1000) })).max(12),
+      emails: z.array(z.object({ subject: s(400), body: s(8000), sendWhen: s(300) })).max(12),
+      posts: z.array(z.object({ platform: s(100), text: s(3000), hashtags: z.array(s(100)).max(20) })).max(20),
+      adAngles: z.array(s(1000)).max(20), launchChecklist: z.array(s(1000)).max(40),
+    }).nullable().optional(),
     createdAt: s(40),
     updatedAt: s(40),
   }),

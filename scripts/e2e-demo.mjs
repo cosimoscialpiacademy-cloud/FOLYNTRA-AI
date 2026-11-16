@@ -191,6 +191,32 @@ try {
     return `${zipFiles.length} file, ${manifest.pagine} pagine`;
   });
 
+  await step('Marketing: kit generato (mock dichiarato), modificabile, scaricabile, nello ZIP', async () => {
+    await page.getByRole('tab', { name: /^Marketing/ }).click();
+    await page.getByText('Nessun kit ancora').waitFor();
+    await page.getByRole('button', { name: /Genera kit marketing/ }).click();
+    await page.getByText('TESTO DEMO (mock)').first().waitFor();
+    await page.getByLabel('Frase di posizionamento').waitFor();
+    assert((await page.getByLabel('Frase di posizionamento').inputValue()).includes('TESTO DEMO (mock)'), 'il kit mock deve essere marcato');
+    // modifica salvata: sostituisco la frase e ricarico
+    await page.getByLabel('Frase di posizionamento').fill('Una guida chiara per tenere la casa in ordine.');
+    await page.waitForTimeout(1200);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.getByRole('tab', { name: /^Marketing/ }).click();
+    assert((await page.getByLabel('Frase di posizionamento').inputValue()) === 'Una guida chiara per tenere la casa in ordine.', 'la modifica non è stata salvata');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /Scarica \.md/ }).click()]);
+    const md = readFileSync(await dl.path(), 'utf8');
+    assert(md.includes('# Kit marketing') && md.includes('Una guida chiara per tenere la casa in ordine.') && md.includes('BOZZA'), 'markdown scaricato incompleto');
+    await shot('07a-marketing');
+    // esporta di nuovo il kit e controlla che marketing/ sia nello ZIP
+    await page.getByRole('tab', { name: /KDP Kit/ }).click();
+    const [zdl] = await Promise.all([page.waitForEvent('download', { timeout: 180000 }), page.getByRole('button', { name: /Esporta ZIP KDP/ }).click()]);
+    const zip2 = await JSZip.loadAsync(readFileSync(await zdl.path()));
+    assert(zip2.file('marketing/kit-marketing.md'), 'marketing/kit-marketing.md assente dallo ZIP');
+    await page.getByText(/Kit marketing senza testo segnaposto/).waitFor();
+    return 'kit in ZIP + controllo QA (avviso)';
+  });
+
   await step('Ads & Royalties: piano manuale, import report, ACOS e pareggio', async () => {
     await page.getByRole('tab', { name: /Ads & Royalties/ }).click();
     await page.getByText('Nessun report importato: nessuna performance viene mostrata').waitFor({ state: 'detached', timeout: 1000 }).catch(() => undefined);
@@ -231,14 +257,14 @@ try {
     }
     await page.goto(`${BASE}/progetti`, { waitUntil: 'networkidle' });
     await page.getByRole('link', { name: TITLE }).click();
-    for (const tab of ['Brief', 'Indice', 'Scrittura', 'Cover', 'KDP Kit', 'Ads & Royalties']) {
+    for (const tab of ['Brief', 'Indice', 'Scrittura', 'Cover', 'KDP Kit', 'Marketing', 'Ads & Royalties']) {
       await page.getByRole('tab', { name: new RegExp(tab) }).click();
       await page.waitForTimeout(300);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       assert(overflow <= 1, `scorrimento orizzontale di ${overflow}px nella scheda ${tab}`);
       await shot(`09-mobile-${tab.toLowerCase().replace(/[^a-z]+/g, '-')}`, { fullPage: false });
     }
-    return `${report.length} pagine + 6 schede`;
+    return `${report.length} pagine + 7 schede`;
   });
 
   await step('Nessun errore in console', async () => {

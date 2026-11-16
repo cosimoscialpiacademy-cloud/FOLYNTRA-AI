@@ -78,6 +78,10 @@ Le route server sono di solo calcolo: i dati restano nell'archivio dell'utente. 
 
 Font EB Garamond, Playfair Display, Inter e Oswald: SIL Open Font License 1.1 (pacchetti `@fontsource`). Le copertine sono grafica vettoriale generata dal codice, senza immagini di terzi.
 
+## Marketing
+
+Scheda «Marketing» del progetto: bozze per il lancio (descrizione, A+, pagina autore, email, post, idee Ads manuali). Sono bozze da rivedere: nessuna testimonianza o dato inventato.
+
 ## Identità visiva
 
 Il logo ufficiale è in `brand/logo-ufficiale.png` (trasparente) con la tavola di identità in `brand/tavola-identita-visiva.png`.

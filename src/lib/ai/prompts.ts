@@ -68,3 +68,25 @@ Per ogni problema riporta l'estratto esatto (max 200 caratteri), il problema e l
 --- CAPITOLO ---
 ${content}`;
 }
+
+export function marketingPrompt(b: BriefCtx, authorName: string, currentDescription: string): string {
+  return `Brief del libro:\n${briefBlock(b)}Autore: ${authorName.trim() || '(da indicare)'}
+${currentDescription.trim() ? `Descrizione attuale (migliorala, non copiarla):\n${currentDescription.trim()}\n` : ''}
+Prepara il KIT MARKETING per il lancio manuale di questo libro su Amazon KDP. Rispetta SEMPRE queste regole:
+- NIENTE testimonianze, recensioni, premi, "bestseller", "n. 1", statistiche, percentuali o numeri di vendita. Se servirebbe una prova, scrivi [DA VERIFICARE: cosa serve].
+- NIENTE promesse di risultati, guadagni, guarigioni o tempi garantiti. Descrivi cosa il lettore trova nel libro, non cosa otterrà per certo.
+- Per la biografia dell'autore NON inventare titoli di studio, esperienze, premi o numeri: usa solo il nome indicato e segnaposto [DA COMPLETARE: ...] per ogni fatto personale.
+- Niente prezzi, sconti o inviti a lasciare recensioni (Amazon li vieta nei contenuti del prodotto). Nessun link inventato.
+- Le email sono per la lista di contatti dell'autore stessa (persone che hanno scelto di riceverle): niente spam.
+
+Produci:
+1. hook: una frase di posizionamento (max 20 parole).
+2. amazonDescription: descrizione di vendita 150-230 parole, testo semplice con paragrafi brevi, per il pubblico indicato.
+3. bullets: 5 punti breve "cosa trovi nel libro" (nessuna promessa di risultato).
+4. aPlus: 4 moduli per i contenuti A+ (titolo, testo 40-70 parole, idea per l'immagine da far realizzare all'autore).
+5. authorBio: 70-110 parole, in terza persona, con segnaposto per i fatti personali.
+6. emails: 3 email di lancio (annuncio, approfondimento utile con un consiglio tratto dal tema, ultimo promemoria): oggetto, testo 80-140 parole, quando inviarla (es. "giorno del lancio").
+7. posts: 6 post per social diversi (Instagram, Facebook, LinkedIn, X, TikTok come copione breve, Pinterest): testo e 3-5 hashtag pertinenti.
+8. adAngles: 5 angolazioni per annunci Sponsored Products MANUALI (idee di messaggio e di parole chiave, senza cifre di budget).
+9. launchChecklist: 10 passi pratici e realistici per le prime due settimane (inclusa la verifica manuale di tutto ciò che è [DA VERIFICARE]).`;
+}

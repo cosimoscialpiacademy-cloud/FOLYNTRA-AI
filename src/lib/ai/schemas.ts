@@ -52,12 +52,27 @@ export const ReviewOutput = z.object({
 });
 export type ReviewOutput = z.infer<typeof ReviewOutput>;
 
+export const MarketingInput = z.object({ brief: BriefCtx, authorName: short, currentDescription: z.string().max(8000) });
+export const MarketingOutput = z.object({
+  hook: z.string(),
+  amazonDescription: z.string(),
+  bullets: z.array(z.string()),
+  aPlus: z.array(z.object({ title: z.string(), body: z.string(), imageIdea: z.string() })),
+  authorBio: z.string(),
+  emails: z.array(z.object({ subject: z.string(), body: z.string(), sendWhen: z.string() })),
+  posts: z.array(z.object({ platform: z.string(), text: z.string(), hashtags: z.array(z.string()) })),
+  adAngles: z.array(z.string()),
+  launchChecklist: z.array(z.string()),
+});
+export type MarketingOutput = z.infer<typeof MarketingOutput>;
+
 export const AiRequest = z.discriminatedUnion('task', [
   z.object({ task: z.literal('brainstorm'), input: BrainstormInput }),
   z.object({ task: z.literal('concept'), input: ConceptInput }),
   z.object({ task: z.literal('outline'), input: OutlineInput }),
   z.object({ task: z.literal('chapter'), input: ChapterInput }),
   z.object({ task: z.literal('review'), input: ReviewInput }),
+  z.object({ task: z.literal('marketing'), input: MarketingInput }),
 ]).and(z.object({
   projectId: z.string().max(80).nullable(),
   /** Spesa già registrata per il libro (USD) e tetto scelto dall'utente. */

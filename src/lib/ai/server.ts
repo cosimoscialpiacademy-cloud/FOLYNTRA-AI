@@ -6,9 +6,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { z } from 'zod';
 import { DEFAULT_MODEL, computeCost, worstCaseCost } from './pricing';
-import { MOCK_MODEL, mockBrainstorm, mockChapter, mockConcept, mockOutline, mockReview } from './mock';
-import { SYSTEM_EDITORIAL, brainstormPrompt, chapterPrompt, conceptPrompt, outlinePrompt, reviewPrompt } from './prompts';
-import { BrainstormOutput, ConceptOutput, OutlineOutput, ReviewOutput, type AiEvent, type AiRequest } from './schemas';
+import { MOCK_MODEL, mockBrainstorm, mockChapter, mockConcept, mockMarketing, mockOutline, mockReview } from './mock';
+import { SYSTEM_EDITORIAL, brainstormPrompt, chapterPrompt, conceptPrompt, marketingPrompt, outlinePrompt, reviewPrompt } from './prompts';
+import { BrainstormOutput, ConceptOutput, MarketingOutput, OutlineOutput, ReviewOutput, type AiEvent, type AiRequest } from './schemas';
 
 export interface AiConfig {
   mode: 'anthropic' | 'mock';
@@ -40,7 +40,7 @@ export function aiConfig(): AiConfig {
   return { mode: 'anthropic', model, reason: '', maxUsdPerBook };
 }
 
-const MAX_TOKENS: Record<AiRequest['task'], number> = { brainstorm: 6000, concept: 4000, outline: 8000, chapter: 0, review: 6000 };
+const MAX_TOKENS: Record<AiRequest['task'], number> = { brainstorm: 6000, concept: 4000, outline: 8000, chapter: 0, review: 6000, marketing: 9000 };
 
 function chapterMaxTokens(targetWords: number): number {
   // ~2 token per parola italiana + margine per il ragionamento adattivo.
@@ -72,10 +72,11 @@ function promptFor(req: AiRequest): string {
     case 'outline': return outlinePrompt(req.input.brief, req.input.chapterCount, req.input.targetWords);
     case 'chapter': return chapterPrompt(req.input);
     case 'review': return reviewPrompt(req.input.brief, req.input.chapterTitle, req.input.content);
+    case 'marketing': return marketingPrompt(req.input.brief, req.input.authorName, req.input.currentDescription);
   }
 }
 
-const OUTPUT_SCHEMA = { brainstorm: BrainstormOutput, concept: ConceptOutput, outline: OutlineOutput, review: ReviewOutput } as const;
+const OUTPUT_SCHEMA = { brainstorm: BrainstormOutput, concept: ConceptOutput, outline: OutlineOutput, review: ReviewOutput, marketing: MarketingOutput } as const;
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
@@ -92,6 +93,7 @@ async function* runMock(req: AiRequest, signal: AbortSignal): AsyncGenerator<AiE
     case 'concept': return void (yield done({ data: mockConcept(req.input.brief) }));
     case 'outline': return void (yield done({ data: mockOutline(req.input.brief, req.input.chapterCount, req.input.targetWords) }));
     case 'review': return void (yield done({ data: mockReview() }));
+    case 'marketing': return void (yield done({ data: mockMarketing(req.input.brief, req.input.authorName) }));
     case 'chapter': {
       const text = mockChapter(req.input);
       for (let i = 0; i < text.length; i += 220) {

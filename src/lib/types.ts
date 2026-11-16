@@ -131,6 +131,21 @@ export interface Matter {
   authorBio: string;
 }
 
+/** Kit marketing: bozze per l'autore. Mai testimonianze, recensioni o dati di vendita inventati. */
+export interface MarketingKit {
+  generatedBy: 'mock' | 'anthropic' | 'human';
+  generatedAt: string;
+  hook: string;
+  amazonDescription: string;
+  bullets: string[];
+  aPlus: { title: string; body: string; imageIdea: string }[];
+  authorBio: string;
+  emails: { subject: string; body: string; sendWhen: string }[];
+  posts: { platform: string; text: string; hashtags: string[] }[];
+  adAngles: string[];
+  launchChecklist: string[];
+}
+
 export interface Project {
   id: string;
   nicheId: string | null;
@@ -155,6 +170,7 @@ export interface Project {
   budgetUsd: number;
   /** Pagine effettive dell'ultimo PDF interno renderizzato (null = mai renderizzato). */
   pageCount: number | null;
+  marketing?: MarketingKit | null;
   createdAt: string;
   updatedAt: string;
 }

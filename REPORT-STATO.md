@@ -129,3 +129,11 @@ Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso dem
 - Supabase, epubcheck, report Amazon reali, tabella costi di stampa in EUR (come prima).
 
 **Scelte da conoscere:** lo slogan «genera profitto con l'AI» della tavola non è usato (promessa di guadagno); i valori «Ricavi stimati» della tavola sono solo stile, l'app mostra solo numeri reali.
+
+## Aggiornamento — modulo Marketing, auto-test PDF
+
+- Nuova scheda **Marketing**: descrizione Amazon, punti chiave, 4 moduli A+, pagina autore, 3 email di lancio, 6 post social, angolazioni per annunci manuali, checklist di due settimane. Tutto modificabile; «Usa come descrizione KDP» e «Usa nel libro»; download `.md`; incluso nello ZIP come `marketing/kit-marketing.md`.
+- Onestà: il prompt vieta testimonianze, recensioni, premi, classifiche, numeri di vendita, promesse di risultato e bio inventate (restano segnaposto `[DA COMPLETARE/VERIFICARE]`). Il QA segnala (avviso, non blocco) un kit con testo mock o segnaposto.
+- Auto-test all'avvio del server (`src/instrumentation.ts`): scrive nei log `[renderer] OK — Chromium … PDF di prova …` oppure `FALLITO`. Disattivabile con `RENDERER_SELFTEST=false`. Chromium parte con `--disable-dev-shm-usage` (evita crash nei container).
+- Eseguito: typecheck, lint, **72/72** test, e2e demo **18/18**, e2e accesso **8/8**.
+- Non verificato: il kit marketing con l'AI reale (solo mock e finto provider).
