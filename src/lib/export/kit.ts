@@ -101,17 +101,21 @@ export async function buildKit(bundle: BookBundle, browser: Browser, now = new D
   const interior = await renderInterior(bundle, browser, now.getFullYear());
   const geometry = coverGeometry(project.layout.trim, interior.pageCount, project.layout.paper);
   const [coverPdf, coverJpg] = await Promise.all([renderCoverPdf(browser, project.cover, geometry), renderEbookCoverJpg(browser, project.cover)]);
-  const [epub, docx] = await Promise.all([buildEpub(bundle, coverJpg, now), buildDocx(bundle, now.getFullYear())]);
+  const coloring = project.kind === 'coloring';
+  // Un libro da colorare è solo cartaceo: niente EPUB, DOCX né quaderno bonus.
+  const [epub, docx] = coloring ? [null, null] : await Promise.all([buildEpub(bundle, coverJpg, now), buildDocx(bundle, now.getFullYear())]);
 
-  const fonts = await fontFaceCss(['EB Garamond', 'Playfair Display', 'Inter']);
-  const bonus = bonusHtml(bundle, fonts);
-  const bp = await newOfflinePage(browser);
-  let bonusPdf: Uint8Array;
-  try {
-    await bp.setContent(bonus.html, { waitUntil: 'load' });
-    bonusPdf = await bp.pdf({ preferCSSPageSize: true, printBackground: true });
-  } finally {
-    await bp.context().close();
+  let bonus: { html: string; words: number } | null = null;
+  let bonusPdf: Uint8Array | null = null;
+  if (!coloring) {
+    bonus = bonusHtml(bundle, await fontFaceCss(['EB Garamond', 'Playfair Display', 'Inter']));
+    const bp = await newOfflinePage(browser);
+    try {
+      await bp.setContent(bonus.html, { waitUntil: 'load' });
+      bonusPdf = await bp.pdf({ preferCSSPageSize: true, printBackground: true });
+    } finally {
+      await bp.context().close();
+    }
   }
 
   // 2. QA sui file realmente prodotti.
@@ -122,11 +126,11 @@ export async function buildKit(bundle: BookBundle, browser: Browser, now = new D
     cover: await inspectPdf(coverPdf),
     coverGeometry: geometry,
     ebookCover: { width: jpgMeta.width ?? 0, height: jpgMeta.height ?? 0, format: jpgMeta.format ?? 'sconosciuto' },
-    epub: await validateEpub(epub),
-    docx: await validateDocx(docx),
-    bonusWords: bonus.words,
+    epub: epub ? await validateEpub(epub) : undefined,
+    docx: docx ? await validateDocx(docx) : undefined,
+    bonusWords: bonus?.words,
     coverArt: await coverArtInfo(project.cover),
-    epubcheck: await maybeEpubcheck(epub),
+    epubcheck: epub ? await maybeEpubcheck(epub) : undefined,
   });
 
   // 3. Documenti di accompagnamento.
@@ -144,7 +148,7 @@ export async function buildKit(bundle: BookBundle, browser: Browser, now = new D
     descrizioneHtml: descriptionToKdpHtml(project.kdp.description),
     cartaceo: { formato: `${trim.widthIn} x ${trim.heightIn} in`, carta: project.layout.paper === 'cream' ? 'crema' : 'bianca', inchiostro: 'nero', abbondanzaInterno: project.layout.bleed, pagine: interior.pageCount, dorsoIn: geometry.spineIn, copertinaIn: `${geometry.fullWidthIn} x ${geometry.fullHeightIn}`, finitura: 'a scelta su KDP (opaca/lucida)' },
     prezzi: { nota: 'SIMULAZIONE: verificare con il calcolatore ufficiale KDP. Non è una previsione di vendita.', valuta: m.currency, cartaceo: ladder, ebook },
-    parole: chapters.reduce((n, c) => n + wordCount(c.content), 0),
+    ...(coloring ? { disegni: (project.coloring?.pages ?? []).length } : { parole: chapters.reduce((n, c) => n + wordCount(c.content), 0) }),
   };
   const csvCell = (v: string) => `"${v.replace(/"/g, '""')}"`;
   const metadataCsv = ['campo,valore', ...[['titolo', project.title], ['sottotitolo', project.subtitle], ['autore', project.author], ['lingua', m.language], ['marketplace', project.marketplace], ...metadata.paroleChiave.map((k, i) => [`parola_chiave_${i + 1}`, k]), ...metadata.categorie.map((c, i) => [`categoria_${i + 1}`, c]), ['pagine', String(interior.pageCount)], ['prezzo_cartaceo', String(project.kdp.listPricePaperback)], ['prezzo_ebook', String(project.kdp.listPriceEbook)]].map((r) => r.map(csvCell).join(','))].join('\n');
@@ -157,23 +161,25 @@ export async function buildKit(bundle: BookBundle, browser: Browser, now = new D
     testo: { valore: project.kdp.aiText, significato: aiLabel[project.kdp.aiText] },
     immagini: { valore: project.kdp.aiImages, significato: aiLabel[project.kdp.aiImages], nota: coverArtNote },
     traduzioni: { valore: project.kdp.aiTranslation, significato: aiLabel[project.kdp.aiTranslation] },
-    capitoli: sortedChapters(chapters).map((c) => ({ posizione: c.position, titolo: c.title, origineTesto: c.generatedBy, generatoDaIa: c.aiGenerated, stato: c.status })),
+    ...(coloring
+      ? { disegni: (project.coloring?.pages ?? []).map((p, i) => ({ posizione: i + 1, titolo: p.title, origine: p.source === 'ia' ? 'disegnato con IA (SVG)' : p.source === 'mandala' ? 'mandala generato dal codice (nessuna IA)' : 'immagine caricata dall’autore', generatoDaIa: p.aiGenerated })) }
+      : { capitoli: sortedChapters(chapters).map((c) => ({ posizione: c.position, titolo: c.title, origineTesto: c.generatedBy, generatoDaIa: c.aiGenerated, stato: c.status })) }),
     revisioneUmanaConfermata: project.kdp.humanReviewConfirmed,
   };
   const mark = (c: QaCheck) => (c.result === 'ok' ? '[x]' : '[ ]');
   const icon = (c: QaCheck) => (c.result === 'ok' ? 'OK' : c.result === 'fallito' ? 'FALLITO' : 'NON ESEGUITO');
   const qaMd = `# Report QA — ${project.title}\n\n**Stato: ${stato}**\n\nGenerato il ${now.toISOString()}. Controlli critici falliti o non eseguiti bloccano lo stato "pronto".\n\n| Esito | Gravità | Controllo | Dettaglio |\n|---|---|---|---|\n${qa.checks.map((c) => `| ${icon(c)} | ${c.severity} | ${c.label} | ${c.detail.replace(/\|/g, '/')} |`).join('\n')}\n\n## Segnalazioni sul testo\n\n${qa.issues.length ? qa.issues.map((i) => `- [${i.severity}] ${i.chapterTitle}: ${i.message}${i.excerpt ? ` — «${i.excerpt}»` : ''}`).join('\n') : 'Nessuna segnalazione.'}\n\n## Test non eseguiti da questo software\n\n- Kindle Previewer / KDP Previewer (manuale).\n- Verifica antiplagio e verifica dei fatti: restano responsabilità dell’autore.\n- ${FONT_LICENSE_NOTE}\n`;
-  const checklist = `# Checklist KDP — ${project.title}\n\n**Stato del pacchetto: ${stato}**\n\nFile preparati per upload manuale. Amazon verifica e approva la pubblicazione.\n\n## Controlli automatici\n\n${qa.checks.filter((c) => c.severity !== 'info').map((c) => `- ${mark(c)} ${c.label} — ${c.detail}`).join('\n')}\n\n## Da fare a mano sul tuo account KDP\n\n- [ ] Autore/proprietà e diritti confermati; contenuti originali, font e asset licenziati\n- [ ] Titolo/sottotitolo/categorie/keyword coerenti e non fuorvianti\n- [ ] Dichiarazione IA compilata come in \`ai-disclosure.json\`\n- [ ] Caricato \`manuscript.pdf\` e controllato nel Previewer (margini, pagine, indice)\n- [ ] Caricato \`cover-print.pdf\` e controllato dorso e aree sicure nel Previewer\n- [ ] Caricato \`ebook.epub\` + \`cover-ebook.jpg\` e controllato in Kindle Previewer\n- [ ] Prezzo verificato con il calcolatore ufficiale KDP\n- [ ] Copia di prova cartacea ordinata e controllata (consigliato)\n- [ ] Backup di questo ZIP conservato\n- [ ] Rispetto del limite KDP sui nuovi titoli a settimana\n`;
-  const guide = `# Guida al caricamento manuale su KDP\n\nNon esiste un’API pubblica KDP: questo software NON pubblica al posto tuo.\n\n1. Accedi a https://kdp.amazon.com e scegli **Crea** → Kindle eBook oppure Copertina flessibile.\n2. **Dettagli**: copia titolo, sottotitolo, autore, descrizione (\`description.html\`), parole chiave e categorie da \`metadata.json\`.\n3. **Contenuti generati dall’IA**: rispondi come indicato in \`ai-disclosure.json\`.\n4. **Cartaceo**: formato ${trim.widthIn} × ${trim.heightIn} in, carta ${project.layout.paper === 'cream' ? 'crema' : 'bianca'}, inchiostro nero, ${project.layout.bleed ? 'con' : 'senza'} abbondanza. Carica \`manuscript.pdf\` (${interior.pageCount} pagine) e \`cover-print.pdf\` (dorso ${geometry.spineIn} in).\n5. **eBook**: carica \`ebook.epub\` e \`cover-ebook.jpg\`.\n6. Apri il **Previewer** e controlla ogni pagina. Correggi qui e riesporta se serve.\n7. **Prezzi**: i valori in \`royalty-simulation.json\` sono simulazioni; conferma con il calcolatore KDP.\n8. Invia per la revisione. Solo dopo l’approvazione di Amazon il libro è pubblicato.\n\n\`editable.docx\` serve per modifiche in Word; \`bonus/\` contiene materiale scaricabile separato.\n`;
+  const checklist = `# Checklist KDP — ${project.title}\n\n**Stato del pacchetto: ${stato}**\n\nFile preparati per upload manuale. Amazon verifica e approva la pubblicazione.\n\n## Controlli automatici\n\n${qa.checks.filter((c) => c.severity !== 'info').map((c) => `- ${mark(c)} ${c.label} — ${c.detail}`).join('\n')}\n\n## Da fare a mano sul tuo account KDP\n\n- [ ] Autore/proprietà e diritti confermati; contenuti originali, font e asset licenziati\n- [ ] Titolo/sottotitolo/categorie/keyword coerenti e non fuorvianti\n- [ ] Dichiarazione IA compilata come in \`ai-disclosure.json\`\n- [ ] Caricato \`manuscript.pdf\` e controllato nel Previewer (margini, pagine, indice)\n- [ ] Caricato \`cover-print.pdf\` e controllato dorso e aree sicure nel Previewer\n${coloring ? '' : '- [ ] Caricato \`ebook.epub\` + \`cover-ebook.jpg\` e controllato in Kindle Previewer\n'}- [ ] Prezzo verificato con il calcolatore ufficiale KDP\n- [ ] Copia di prova cartacea ordinata e controllata (consigliato)\n- [ ] Backup di questo ZIP conservato\n- [ ] Rispetto del limite KDP sui nuovi titoli a settimana\n`;
+  const guide = `# Guida al caricamento manuale su KDP\n\nNon esiste un’API pubblica KDP: questo software NON pubblica al posto tuo.\n\n1. Accedi a https://kdp.amazon.com e scegli **Crea** → Kindle eBook oppure Copertina flessibile.\n2. **Dettagli**: copia titolo, sottotitolo, autore, descrizione (\`description.html\`), parole chiave e categorie da \`metadata.json\`.\n3. **Contenuti generati dall’IA**: rispondi come indicato in \`ai-disclosure.json\`.\n4. **Cartaceo**: formato ${trim.widthIn} × ${trim.heightIn} in, carta ${project.layout.paper === 'cream' ? 'crema' : 'bianca'}, inchiostro nero, ${project.layout.bleed ? 'con' : 'senza'} abbondanza. Carica \`manuscript.pdf\` (${interior.pageCount} pagine) e \`cover-print.pdf\` (dorso ${geometry.spineIn} in).\n${coloring ? '5. **Solo cartaceo**: i libri da colorare si pubblicano in copertina flessibile (non come eBook).\n' : '5. **eBook**: carica \`ebook.epub\` e \`cover-ebook.jpg\`.\n'}6. Apri il **Previewer** e controlla ogni pagina. Correggi qui e riesporta se serve.\n7. **Prezzi**: i valori in \`royalty-simulation.json\` sono simulazioni; conferma con il calcolatore KDP.\n8. Invia per la revisione. Solo dopo l’approvazione di Amazon il libro è pubblicato.\n\n${coloring ? '' : '\`editable.docx\` serve per modifiche in Word; \`bonus/\` contiene materiale scaricabile separato.\n'}`;
   const rights = `# Diritti e responsabilità\n\n- Autore dichiarato: ${project.author || '(da compilare)'}\n- Conferma diritti da parte dell’utente: ${project.kdp.rightsConfirmed ? 'SÌ' : 'NO — da confermare prima di pubblicare'}\n- Testi: responsabilità dell’autore per originalità, veridicità e fonti. Nessuna certificazione di originalità è fornita dal software.\n- Copertina: ${coverArtUsed ? (project.cover.art?.id ? 'layout FOLYNTRA con sfondo del catalogo dell’app, generato con IA (modello GPT Image 2.6 di OpenAI tramite Higgsfield, 16/11/2026): l’autore deve verificare che il proprio piano consenta l’uso commerciale delle immagini generate.' : 'layout FOLYNTRA con immagine fornita dall’autore: l’autore garantisce di averne i diritti.') : 'grafica vettoriale originale generata da template FOLYNTRA; nessuna immagine stock.'}\n- ${FONT_LICENSE_NOTE}\n- Fonti verificate dall’autore: ${project.sources.filter((s) => s.verified).length}; non verificate (escluse dalla bibliografia): ${project.sources.filter((s) => !s.verified).length}.\n`;
 
   const entries: [string, Uint8Array | string][] = [
     ['manuscript.pdf', interior.pdf],
     ['cover-print.pdf', coverPdf],
     ['cover-ebook.jpg', coverJpg],
-    ['ebook.epub', epub],
-    ['editable.docx', docx],
-    ['bonus/quaderno-operativo.pdf', bonusPdf],
+    ...(epub ? ([['ebook.epub', epub]] as [string, Uint8Array][]) : []),
+    ...(docx ? ([['editable.docx', docx]] as [string, Uint8Array][]) : []),
+    ...(bonusPdf ? ([['bonus/quaderno-operativo.pdf', bonusPdf]] as [string, Uint8Array][]) : []),
     ['metadata.json', JSON.stringify(metadata, null, 2)],
     ['metadata.csv', metadataCsv],
     ['description.html', metadata.descrizioneHtml],

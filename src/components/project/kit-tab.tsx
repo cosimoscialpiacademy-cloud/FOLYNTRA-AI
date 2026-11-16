@@ -43,7 +43,9 @@ export function KitTab({ project, chapters, update }: TabProps) {
   const m = MARKETPLACES[project.marketplace];
   const setKdp = (patch: Partial<KdpMeta>) => update({ kdp: { ...kdp, ...patch } });
   const last = [...exports.data].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] as ExportRecord | undefined;
-  const anyAi = chapters.some((c) => c.aiGenerated);
+  const coloring = project.kind === 'coloring';
+  const drawings = (project.coloring?.pages ?? []).filter((p) => p.svg || p.image);
+  const anyAi = coloring ? drawings.some((p) => p.aiGenerated) : chapters.some((c) => c.aiGenerated);
   const keywords = [...kdp.keywords, ...Array(7).fill('')].slice(0, 7) as string[];
   const categories = [...kdp.categories, ...Array(3).fill('')].slice(0, 3) as string[];
   const pages = project.pageCount;
@@ -51,10 +53,10 @@ export function KitTab({ project, chapters, update }: TabProps) {
   const ebook = ebookRoyalty({ listPrice: kdp.listPriceEbook, marketplace: project.marketplace });
 
   async function exportKit() {
-    if (!chapters.length) return toast('Serve almeno un capitolo.', 'bad');
+    if (coloring ? !drawings.length : !chapters.length) return toast(coloring ? 'Serve almeno un disegno.' : 'Serve almeno un capitolo.', 'bad');
     setBusy(true);
     try {
-      const r = await callExport('kit', { project, chapters }, await getToken());
+      const r = await callExport('kit', { project, chapters: coloring ? [] : chapters }, await getToken());
       const archive = await JSZip.loadAsync(await r.blob.arrayBuffer());
       const qa = JSON.parse(await archive.file('qa-report.json')!.async('string')) as { kdpReady: boolean; checks: QaCheck[] };
       const manifest = JSON.parse(await archive.file('manifest.json')!.async('string')) as { files: ExportFile[] };

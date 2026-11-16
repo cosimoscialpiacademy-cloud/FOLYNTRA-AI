@@ -54,7 +54,7 @@ export interface Niche {
   updatedAt: string;
 }
 
-export type BookKind = 'nonfiction' | 'workbook' | 'cookbook';
+export type BookKind = 'nonfiction' | 'workbook' | 'cookbook' | 'coloring';
 export type ProjectStatus = 'draft' | 'research' | 'writing' | 'review' | 'export_ready' | 'published_by_user';
 export type PublishState = 'non_pronto' | 'pacchetto_pronto' | 'inviato_dall_utente' | 'pubblicato_e_verificato';
 
@@ -188,6 +188,33 @@ export interface MarketingKit {
   launchChecklist: string[];
 }
 
+/** Una pagina di un libro da colorare: disegno al tratto (SVG vettoriale o immagine caricata), mai testo. */
+export interface ColoringPage {
+  id: string;
+  title: string;
+  source: 'ia' | 'caricata' | 'mandala';
+  /** SVG pulito (solo tratti neri su bianco). */
+  svg: string | null;
+  /** Immagine caricata (data URL JPEG/PNG) già ripulita in bianco/nero. */
+  image: string | null;
+  width: number;
+  height: number;
+  /** Soggetto in inglese: serve all'IA e come prompt per ChatGPT/altri generatori. */
+  prompt: string;
+  /** true se il disegno è stato prodotto con IA (da dichiarare a KDP). */
+  aiGenerated: boolean;
+  seed: number;
+}
+
+export interface ColoringBook {
+  pages: ColoringPage[];
+  ageRange: string;
+  /** Indice dei disegni con i numeri di pagina reali. */
+  toc: boolean;
+  /** Titolo del disegno stampato sotto l'immagine. */
+  captions: boolean;
+}
+
 export interface Project {
   id: string;
   nicheId: string | null;
@@ -213,6 +240,8 @@ export interface Project {
   /** Pagine effettive dell'ultimo PDF interno renderizzato (null = mai renderizzato). */
   pageCount: number | null;
   marketing?: MarketingKit | null;
+  /** Solo per kind = 'coloring'. */
+  coloring?: ColoringBook | null;
   /** Lavoro dell'agente copertine: screenshot dei concorrenti (forniti dall'utente), strategia e ultima valutazione. */
   coverBrief?: CoverBrief | null;
   createdAt: string;

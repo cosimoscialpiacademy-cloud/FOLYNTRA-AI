@@ -188,3 +188,13 @@ Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso dem
 - **QA**: frasi vietate (bestseller/#1, premi, recensioni/stelle, prezzi/gratis, promesse di salute o garanzie) = blocco critico; le etichette devono essere confermate come vere dall'autore, altrimenti il kit non è «pronto».
 - Test: 139 passati, typecheck/lint/build ok, e2e demo e accesso ok (10 passi).
 - Limiti: la generazione dell'immagine di sfondo resta esterna (ChatGPT/altro); nessuna API immagini a pagamento attivata.
+
+## Libro da colorare (verificato con test e browser)
+- Nuovo tipo di libro «Libro da colorare»: scheda **Disegni** al posto di Indice/Scrittura. Passando al tipo si imposta 8,5×11 in, carta bianca, dichiarazione IA.
+- Tre fonti di disegni, tutte in bianco e nero e senza testo: **IA** (task `coloringPlan` per pianificare i soggetti, `coloringPage` per ogni disegno in SVG vettoriale, passato da un sanificatore che scarta script/immagini/colori), **immagini caricate** (ripulite nel browser: scala di grigi, bianchi puliti; prompt «ChatGPT» copiabile per pagina), **mandala** generati dal codice (nessun costo).
+- Interno PDF: frontespizio+copyright (con nota IA nella lingua del mercato), pagina «appartiene a», **indice dei disegni con i numeri di pagina reali**, ogni disegno su pagina destra con **pagina bianca dietro** (senza numero). Il dorso nasce dal numero di pagine reale.
+- Kit solo cartaceo (niente EPUB/DOCX/bonus). QA: ogni pagina ha un disegno (critico), dichiarazione IA coerente (critico), diritti (critico), ≥25 disegni (avviso), risoluzione immagini ≥200 dpi (avviso).
+- Corretto un difetto che valeva anche per i libri di testo: il numero di pagina mancava sulle prime pagine di indice/prefazione/conclusione (font dei margini non ancora caricato al momento della stampa).
+- Test: 155 passati; e2e demo 19/19 (include il libro da colorare); e2e accesso 10/10.
+- NON verificato dal vivo: la qualità dei disegni vettoriali disegnati dal modello reale (serve la chiave Anthropic; costo stimato ~0,15 $ a disegno). Va provata con 1–2 pagine prima di lanciare tutte.
+- Limiti: i mandala sono semplici; l'IA disegna forme semplici (bambini piccoli), non illustrazioni complesse: per quelle usa il caricamento di immagini fatte con ChatGPT/altro.

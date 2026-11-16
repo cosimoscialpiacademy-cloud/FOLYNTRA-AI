@@ -29,8 +29,12 @@ function nicheNotes(niche: Niche | null): string {
 /** Fatti verificabili sul libro: le etichette in copertina possono citare solo questi (e i bonus dichiarati dall'autore). */
 function bookFacts(project: import('@/lib/types').Project, chapters: import('@/lib/types').Chapter[], bonuses: string): string {
   const words = chapters.reduce((n, c) => n + wordCount(c.content), 0);
-  const kind = { nonfiction: 'manuale pratico', workbook: 'workbook con esercizi', cookbook: 'ricettario' }[project.kind];
-  return [`Tipo: ${kind}. Capitoli: ${chapters.length}. Parole circa: ${words.toLocaleString('it-IT')}. Lingua: ${project.locale}.`, bonuses.trim() && `Bonus e contenuti extra INCLUSI nel libro, dichiarati dall'autore: ${bonuses.trim().slice(0, 700)}`].filter(Boolean).join('\n');
+  const kind = { nonfiction: 'manuale pratico', workbook: 'workbook con esercizi', cookbook: 'ricettario', coloring: 'libro da colorare' }[project.kind];
+  const drawings = (project.coloring?.pages ?? []).filter((p) => p.svg || p.image).length;
+  const facts = project.kind === 'coloring'
+    ? `Tipo: ${kind} (interno in bianco e nero, un disegno a tutta pagina con pagina bianca dietro). Disegni: ${drawings}. Età: ${project.coloring?.ageRange ?? ''}. Lingua: ${project.locale}.`
+    : `Tipo: ${kind}. Capitoli: ${chapters.length}. Parole circa: ${words.toLocaleString('it-IT')}. Lingua: ${project.locale}.`;
+  return [facts, bonuses.trim() && `Bonus e contenuti extra INCLUSI nel libro, dichiarati dall'autore: ${bonuses.trim().slice(0, 700)}`].filter(Boolean).join('\n');
 }
 
 /** Costruisce la copertina corrispondente a un concept (valida palette e sfondo: i dati dell'IA non si fidano alla cieca). */

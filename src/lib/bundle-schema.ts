@@ -20,7 +20,7 @@ export const BundleSchema = z.object({
     marketplace: z.enum(['amazon.it', 'amazon.com', 'amazon.co.uk', 'amazon.de', 'amazon.fr', 'amazon.es']),
     locale: s(20),
     status: s(40),
-    kind: z.enum(['nonfiction', 'workbook', 'cookbook']),
+    kind: z.enum(['nonfiction', 'workbook', 'cookbook', 'coloring']),
     title: s(300).min(1, 'Titolo mancante'),
     subtitle: s(400),
     altTitles: z.array(s(300)).max(20),
@@ -49,13 +49,27 @@ export const BundleSchema = z.object({
       posts: z.array(z.object({ platform: s(100), text: s(3000), hashtags: z.array(s(100)).max(20) })).max(20),
       adAngles: z.array(s(1000)).max(20), launchChecklist: z.array(s(1000)).max(40),
     }).nullable().optional(),
+    coloring: z.object({
+      ageRange: s(60), toc: z.boolean(), captions: z.boolean(),
+      pages: z.array(z.object({
+        id: s(80), title: s(120), source: z.enum(['ia', 'caricata', 'mandala']),
+        svg: z.string().max(90_000).nullable(),
+        image: z.string().regex(/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/).max(1_700_000).nullable(),
+        width: z.number().int().min(0).max(20000), height: z.number().int().min(0).max(20000),
+        prompt: s(1500), aiGenerated: z.boolean(), seed: z.number().int().min(0).max(1_000_000_000),
+      })).max(100),
+    }).nullable().optional(),
     createdAt: s(40),
     updatedAt: s(40),
   }),
   chapters: z.array(z.object({
     id: s(80), projectId: s(80), position: z.number().int().min(1).max(200), title: s(300), summary: s(3000), sections: z.array(s(300)).max(40), targetWords: z.number(),
     content: s(300_000), status: z.enum(['draft', 'generating', 'generated', 'reviewed', 'locked']), generatedBy: z.enum(['none', 'mock', 'anthropic', 'human']), aiGenerated: z.boolean(), updatedAt: s(40),
-  })).min(1, 'Serve almeno un capitolo').max(80),
+  })).max(80),
+}).superRefine((b, ctx) => {
+  if (b.project.kind === 'coloring') {
+    if (!b.project.coloring?.pages.length) ctx.addIssue({ code: 'custom', path: ['project', 'coloring'], message: 'Serve almeno un disegno' });
+  } else if (!b.chapters.length) ctx.addIssue({ code: 'custom', path: ['chapters'], message: 'Serve almeno un capitolo' });
 });
 
 export const ExportRequest = z.object({ format: z.enum(['kit', 'interior']), bundle: BundleSchema });

@@ -73,3 +73,42 @@ export async function blobToJpegBase64(blob: Blob, maxSide = 720): Promise<strin
     bitmap.close();
   }
 }
+
+/**
+ * Disegno per un libro da colorare: scala di grigi, bianchi puliti e neri decisi (toglie ombre e grigi di fondo),
+ * lato lungo ≤ 2400 px, JPEG entro ~1,2 MB. Restituisce le dimensioni reali per il controllo dei dpi.
+ */
+export async function prepareColoringImage(file: File): Promise<PreparedImage> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Formato non supportato: usa JPG, PNG o WebP.');
+  if (file.size > 25_000_000) throw new Error('File troppo grande (massimo 25 MB).');
+  const bitmap = await createImageBitmap(file).catch(() => {
+    throw new Error('Impossibile leggere l’immagine: il file potrebbe essere danneggiato.');
+  });
+  const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Il browser non supporta l’elaborazione delle immagini.');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  const img = ctx.getImageData(0, 0, width, height);
+  const d = img.data;
+  const black = 100;
+  const white = 215;
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    const v = Math.round(Math.max(0, Math.min(1, (lum - black) / (white - black))) * 255);
+    d[i] = d[i + 1] = d[i + 2] = v;
+  }
+  ctx.putImageData(img, 0, 0);
+  for (const q of [0.88, 0.8, 0.7, 0.6, 0.5]) {
+    const dataUrl = canvas.toDataURL('image/jpeg', q);
+    if (dataUrl.length * 0.75 <= 1_200_000) return { dataUrl, width, height };
+  }
+  throw new Error('Immagine troppo pesante anche dopo la compressione: usane una più semplice o più piccola.');
+}

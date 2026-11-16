@@ -8,6 +8,7 @@ import type { Browser } from 'playwright-core';
 import { markdownToXhtml } from '../book/markdown';
 import { MARKETPLACES, pageGeometry, insideMarginIn, type PageGeometry } from '../kdp/specs';
 import type { BookBundle, Chapter, Project } from '../types';
+import { svgDataUrl } from '../coloring/svg';
 import { escapeXml } from '../utils';
 import { newOfflinePage } from './chromium';
 import { fontFaceCss } from './fonts';
@@ -33,6 +34,23 @@ interface Section {
   bare: boolean;
   header: string | null;
   html: string;
+  /** Pagine certe della sezione (salta il conteggio di prova). */
+  fixedPages?: number;
+  /** Voci d'indice interne alla sezione (libri da colorare: un disegno ogni due pagine). */
+  subs?: { title: string; offset: number }[];
+}
+
+type Lang = 'it' | 'en' | 'de' | 'fr' | 'es';
+const LABELS: Record<Lang, { toc: string; belongs: string; tips: string[]; rights: string; ai: string; independent: string }> = {
+  it: { toc: 'Indice', belongs: 'Questo libro appartiene a', tips: ['Metti un foglio sotto la pagina che colori.', 'Prova i pennarelli su un angolo prima di usarli.', 'Non esiste un modo sbagliato di colorare: divertiti!'], rights: 'Tutti i diritti riservati. Nessuna parte di questo libro può essere riprodotta senza autorizzazione scritta dell’autore.', ai: 'Nota: i disegni di questo libro sono stati creati con l’assistenza di strumenti di intelligenza artificiale e selezionati dall’autore.', independent: 'Pubblicazione indipendente.' },
+  en: { toc: 'Contents', belongs: 'This book belongs to', tips: ['Place a sheet of paper behind the page you are coloring.', 'Test your markers in a corner first.', 'There is no wrong way to color: have fun!'], rights: 'All rights reserved. No part of this book may be reproduced without written permission from the author.', ai: 'Note: the illustrations in this book were created with the assistance of artificial intelligence tools and selected by the author.', independent: 'Independently published.' },
+  de: { toc: 'Inhalt', belongs: 'Dieses Buch gehört', tips: ['Lege ein Blatt Papier unter die Seite, die du ausmalst.', 'Teste Filzstifte zuerst in einer Ecke.', 'Es gibt kein falsches Ausmalen: viel Spaß!'], rights: 'Alle Rechte vorbehalten. Kein Teil dieses Buches darf ohne schriftliche Genehmigung des Autors vervielfältigt werden.', ai: 'Hinweis: Die Illustrationen in diesem Buch wurden mit Unterstützung von KI-Werkzeugen erstellt und vom Autor ausgewählt.', independent: 'Unabhängig veröffentlicht.' },
+  fr: { toc: 'Sommaire', belongs: 'Ce livre appartient à', tips: ['Place une feuille sous la page que tu colories.', 'Teste tes feutres dans un coin avant de commencer.', 'Il n’y a pas de mauvaise façon de colorier : amuse-toi !'], rights: 'Tous droits réservés. Aucune partie de ce livre ne peut être reproduite sans l’autorisation écrite de l’auteur.', ai: 'Remarque : les illustrations de ce livre ont été créées avec l’aide d’outils d’intelligence artificielle et sélectionnées par l’auteur.', independent: 'Publication indépendante.' },
+  es: { toc: 'Índice', belongs: 'Este libro pertenece a', tips: ['Pon una hoja detrás de la página que colorees.', 'Prueba los rotuladores en una esquina antes de empezar.', 'No hay una forma incorrecta de colorear: ¡diviértete!'], rights: 'Todos los derechos reservados. Ninguna parte de este libro puede reproducirse sin permiso escrito del autor.', ai: 'Nota: las ilustraciones de este libro se han creado con la ayuda de herramientas de inteligencia artificial y han sido seleccionadas por el autor.', independent: 'Publicación independiente.' },
+};
+export function labelsFor(project: Project) {
+  const l = MARKETPLACES[project.marketplace].locale.slice(0, 2) as Lang;
+  return LABELS[l] ?? LABELS.it;
 }
 
 const e = escapeXml;
@@ -43,6 +61,11 @@ export function sortedChapters(chapters: Chapter[]): Chapter[] {
 }
 
 export function copyrightLines(project: Project, year: number): string[] {
+  if (project.kind === 'coloring') {
+    const L = labelsFor(project);
+    const ai = (project.coloring?.pages ?? []).some((p) => p.aiGenerated);
+    return [`${project.title}${project.subtitle ? `. ${project.subtitle}` : ''}`, `© ${year} ${project.author || 'Autore'}.`, L.rights, ...(ai ? [L.ai] : []), L.independent];
+  }
   const lines = [
     `${project.title}${project.subtitle ? `. ${project.subtitle}` : ''}`,
     `© ${year} ${project.author || 'Autore'}. Tutti i diritti riservati.`,
@@ -54,10 +77,39 @@ export function copyrightLines(project: Project, year: number): string[] {
   return lines;
 }
 
+/** Libro da colorare: frontespizio, pagina «appartiene a», poi un disegno a tutta pagina e una pagina bianca dietro ogni disegno. */
+function coloringSections(bundle: BookBundle, year: number): Section[] {
+  const { project } = bundle;
+  const L = labelsFor(project);
+  const book = project.coloring;
+  const pages = (book?.pages ?? []).filter((p) => p.svg || p.image);
+  const out: Section[] = [{
+    id: 'frontespizio', title: null, kind: 'front', bare: true, header: null,
+    html: `<div class="titlepage"><h1 class="book-title">${e(project.title)}</h1>${project.subtitle ? `<p class="book-subtitle">${e(project.subtitle)}</p>` : ''}<p class="book-author">${e(project.author)}</p></div>
+<div class="copyright">${copyrightLines(project, year).map((l) => `<p>${e(l)}</p>`).join('')}</div>`,
+  }, {
+    id: 'appartiene', title: null, kind: 'front', bare: true, header: null,
+    html: `<div class="belongs"><p class="b1">${e(L.belongs)}</p><div class="bline"></div><ul class="tips">${L.tips.map((t) => `<li>${e(t)}</li>`).join('')}</ul></div>`,
+  }];
+  if (!pages.length) return out;
+  const plates = pages.map((p, i) => {
+    const src = p.image ?? svgDataUrl(p.svg ?? '');
+    const cap = book?.captions && p.title.trim() ? `<p class="cap">${e(p.title)}</p>` : '';
+    return `${i ? '<div class="blank">&nbsp;</div>' : ''}<div class="plate"><img src="${src}" alt=""/>${cap}</div>`;
+  });
+  out.push({
+    id: 'disegni', title: null, kind: 'chapter', bare: false, header: null,
+    html: plates.join(''), fixedPages: pages.length * 2 - 1,
+    subs: pages.map((p, i) => ({ title: p.title.trim() || `${i + 1}`, offset: i * 2 })),
+  });
+  return out;
+}
+
 /** Sezioni del libro nell'ordine di stampa (senza l'indice, inserito dal chiamante). */
 export function buildSections(bundle: BookBundle, year: number): Section[] {
   const { project } = bundle;
   const out: Section[] = [];
+  if (project.kind === 'coloring') return coloringSections(bundle, year);
   out.push({
     id: 'frontespizio', title: null, kind: 'front', bare: true, header: null,
     html: `<div class="titlepage"><h1 class="book-title">${e(project.title)}</h1>${project.subtitle ? `<p class="book-subtitle">${e(project.subtitle)}</p>` : ''}<p class="book-author">${e(project.author)}</p></div>
@@ -129,6 +181,12 @@ dt { font-weight: 700; margin-top: 0.6em; } dd { margin: 0 0 0 1.2em; }
 .toc-row { display: flex; align-items: baseline; text-indent: 0; margin: 0.42em 0; text-align: left; hyphens: none; }
 .toc-row .t { flex: 0 1 auto; } .toc-row .d { flex: 1 1 1em; border-bottom: 0.6pt dotted #777; margin: 0 0.4em; min-width: 1em; } .toc-row .n { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 .toc-row.minor { font-style: italic; }
+${project.kind === 'coloring' ? `.plate { break-before: page; height: ${(g.pageHeightIn - g.topIn - g.bottomIn - 0.04).toFixed(3)}in; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; text-indent: 0; overflow: hidden; }
+.plate:first-child { break-before: auto; } .plate img { flex: 1 1 0; min-height: 0; max-width: 100%; max-height: 100%; object-fit: contain; display: block; } .plate .cap { text-indent: 0; margin: 0.4em 0 0; font-family: 'Playfair Display', serif; font-size: 1.05em; text-align: center; }
+.blank { break-before: page; page: blank; height: 0.1in; overflow: hidden; }
+@page blank { @bottom-center { content: ""; } @top-center { content: ""; } }
+.belongs { padding-top: 28%; text-align: center; } .belongs .b1 { font-family: 'Playfair Display', serif; font-size: 1.5em; text-indent: 0; text-align: center; } .belongs .bline { width: 70%; margin: 1.8em auto 3.5em; border-bottom: 1pt solid #111; height: 1.5em; }
+.belongs .tips { list-style: none; margin: 0 auto; padding: 0; text-align: center; font-style: italic; color: #333; } .belongs .tips li { margin: 0.5em 0; }` : ''}
 .hf-box { ${box} }`;
 }
 
@@ -136,29 +194,32 @@ function sectionDoc(project: Project, css: string, s: Section, startPage: number
   const lang = MARKETPLACES[project.marketplace].locale.slice(0, 2);
   const box = `font-family:'Inter',sans-serif;font-size:7.5pt;letter-spacing:0.08em;text-transform:uppercase;color:#444;`;
   const q = (t: string) => `"${t.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ')}"`;
+  // Il numero di pagina va dichiarato PRIMA delle altre regole @page: in Chromium, dopo @page :left/:right (o una pagina nominata)
+  // una regola con margin box non viene più applicata e la pagina resta senza numero.
+  let first = '';
   let running = '';
   if (!s.bare) {
-    running = `html { counter-reset: page ${startPage - 1}; }
-@page { @bottom-center { content: counter(page); ${box} letter-spacing: 0; font-size: 8.5pt; } }`;
+    first = `@page { @bottom-center { content: counter(page); ${box} letter-spacing: 0; font-size: 8.5pt; } }\nhtml { counter-reset: page ${startPage - 1}; }`;
     if (project.layout.runningHeaders && s.header) {
-      running += `
+      running = `
 @page :left { @top-center { content: ${q(project.title)}; ${box} } }
 @page :right { @top-center { content: ${q(s.header)}; ${box} } }
-@page :first { @top-center { content: none; } }`;
+@page :first { @top-center { content: ""; } }`; // «content: none» qui cancellerebbe anche il numero di pagina
     }
   }
-  return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"/><title>${e(project.title)}</title><style>${css}\n${running}</style></head><body>${s.html}</body></html>`;
+  return `<!DOCTYPE html><html lang="${lang}"><head><meta charset="utf-8"/><title>${e(project.title)}</title><style>${first}\n${css}\n${running}</style></head><body>${s.html}</body></html>`;
 }
 
-function tocHtml(entries: TocEntry[]): string {
-  return `<h1 class="section-title">Indice</h1>${entries.map((t) => `<p class="toc-row${t.kind === 'chapter' ? '' : ' minor'}"><span class="t">${e(t.title)}</span><span class="d"></span><span class="n">${t.page}</span></p>`).join('')}`;
+function tocHtml(entries: TocEntry[], title = 'Indice'): string {
+  return `<h1 class="section-title">${e(title)}</h1>${entries.map((t) => `<p class="toc-row${t.kind === 'chapter' ? '' : ' minor'}"><span class="t">${e(t.title)}</span><span class="d"></span><span class="n">${t.page}</span></p>`).join('')}`;
 }
 
 async function renderPdf(browser: Browser, html: string): Promise<Uint8Array> {
   const page = await newOfflinePage(browser);
   try {
     await page.setContent(html, { waitUntil: 'load' });
-    await page.evaluate('document.fonts.ready').catch(() => undefined);
+    // I font usati solo nei margini (numero di pagina, intestazioni) non vengono caricati da soli: se mancano, il margine resta vuoto.
+    await page.evaluate("Promise.all([\"8.5pt 'Inter'\", \"11pt 'EB Garamond'\", \"11pt 'Playfair Display'\"].map((f) => document.fonts.load(f))).then(() => document.fonts.ready)").catch(() => undefined);
     return await page.pdf({ preferCSSPageSize: true, printBackground: true, tagged: false });
   } finally {
     await page.context().close();
@@ -193,7 +254,9 @@ export async function renderInterior(bundle: BookBundle, browser: Browser, year 
   const { project } = bundle;
   const fonts = await fontFaceCss(['EB Garamond', 'Playfair Display', 'Inter']);
   const content = buildSections(bundle, year);
-  const tocIndex = content.findIndex((s) => s.id !== 'frontespizio' && s.id !== 'dedica');
+  const withToc = project.kind !== 'coloring' || project.coloring?.toc !== false;
+  const L = labelsFor(project);
+  const tocIndex = content.findIndex((s) => s.id !== 'frontespizio' && s.id !== 'dedica' && s.id !== 'appartiene');
   const insertAt = tocIndex === -1 ? content.length : tocIndex;
 
   let assumedPages = project.pageCount ?? 120;
@@ -202,13 +265,15 @@ export async function renderInterior(bundle: BookBundle, browser: Browser, year 
     const css = pageCss(project, geometry, fonts);
 
     // Passo 1: conteggio pagine di ogni sezione (i numeri stanno nei margini e non alterano il flusso).
-    const draftCounts = await inBatches(content, 4, async (s) => countPages(await renderPdf(browser, sectionDoc(project, css, s, 1))));
-    const placeholderToc: TocEntry[] = content.filter((s) => s.title).map((s) => ({ title: s.title as string, page: 888, kind: s.kind === 'toc' ? 'front' : (s.kind as TocEntry['kind']) }));
-    const tocSection = (entries: TocEntry[]): Section => ({ id: 'indice', title: null, kind: 'toc', bare: false, header: 'Indice', html: tocHtml(entries) });
-    const tocPages = await countPages(await renderPdf(browser, sectionDoc(project, css, tocSection(placeholderToc), 1)));
+    const draftCounts = await inBatches(content, 4, async (s) => s.fixedPages ?? countPages(await renderPdf(browser, sectionDoc(project, css, s, 1))));
+    const entriesOf = (list: Section[], pageOf: (i: number) => number): TocEntry[] =>
+      list.flatMap((s, i) => (s.subs ? s.subs.map((x) => ({ title: x.title, page: pageOf(i) + x.offset, kind: 'chapter' as const })) : s.title ? [{ title: s.title, page: pageOf(i), kind: (s.kind === 'toc' ? 'front' : s.kind) as TocEntry['kind'] }] : []));
+    const placeholderToc: TocEntry[] = entriesOf(content, () => 888);
+    const tocSection = (entries: TocEntry[]): Section => ({ id: 'indice', title: null, kind: 'toc', bare: false, header: L.toc, html: tocHtml(entries, L.toc) });
+    const tocPages = withToc ? await countPages(await renderPdf(browser, sectionDoc(project, css, tocSection(placeholderToc), 1))) : 0;
 
-    const sections = [...content.slice(0, insertAt), tocSection(placeholderToc), ...content.slice(insertAt)];
-    const counts = [...draftCounts.slice(0, insertAt), tocPages, ...draftCounts.slice(insertAt)];
+    const sections = withToc ? [...content.slice(0, insertAt), tocSection(placeholderToc), ...content.slice(insertAt)] : content;
+    const counts = withToc ? [...draftCounts.slice(0, insertAt), tocPages, ...draftCounts.slice(insertAt)] : draftCounts;
     const { starts, total } = layoutStarts(counts);
 
     // La gabbia dipende dal numero di pagine: se la fascia cambia si reimpagina.
@@ -217,8 +282,8 @@ export async function renderInterior(bundle: BookBundle, browser: Browser, year 
       continue;
     }
 
-    const toc: TocEntry[] = sections.map((s, i) => ({ s, page: starts[i] })).filter((x) => x.s.title).map((x) => ({ title: x.s.title as string, page: x.page, kind: x.s.kind as TocEntry['kind'] }));
-    sections[insertAt] = tocSection(toc);
+    const toc: TocEntry[] = entriesOf(sections, (i) => starts[i]);
+    if (withToc) sections[insertAt] = tocSection(toc);
 
     // Passo 2: rendering definitivo con numerazione reale.
     const finals = await inBatches(sections, 4, (s, i) => renderPdf(browser, sectionDoc(project, css, s, starts[i])));

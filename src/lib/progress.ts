@@ -3,7 +3,7 @@ import type { Chapter, ExportRecord, Project } from './types';
 import { wordCount } from './utils';
 
 export interface Step {
-  key: 'brief' | 'indice' | 'scrittura' | 'studio' | 'kit';
+  key: 'brief' | 'indice' | 'scrittura' | 'disegni' | 'studio' | 'kit';
   label: string;
   /** 0–1 */
   ratio: number;
@@ -18,6 +18,16 @@ export function projectSteps(project: Project, chapters: Chapter[], exports: Exp
   const n = chapters.length;
   const coverOk = Boolean(project.cover.title.trim() && project.cover.author.trim());
   const last = [...exports].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  if (project.kind === 'coloring') {
+    const pages = project.coloring?.pages ?? [];
+    const drawn = pages.filter((p) => p.svg || p.image).length;
+    return [
+      { key: 'brief', label: 'Brief', ratio: briefDone / briefFields.length, detail: `${briefDone}/${briefFields.length} campi chiave` },
+      { key: 'disegni', label: 'Disegni', ratio: Math.min(1, drawn / 25), detail: pages.length ? `${drawn}/${pages.length} disegnate` : 'da creare' },
+      { key: 'studio', label: 'Cover & interni', ratio: (coverOk ? 0.5 : 0) + (project.pageCount ? 0.5 : 0), detail: project.pageCount ? `${project.pageCount} pagine reali` : 'anteprima PDF da generare' },
+      { key: 'kit', label: 'KDP Kit', ratio: last ? (last.kdpReady ? 1 : 0.5) : 0, detail: last ? (last.kdpReady ? 'pacchetto pronto' : 'esportato come BOZZA') : 'non esportato' },
+    ];
+  }
   return [
     { key: 'brief', label: 'Brief', ratio: briefDone / briefFields.length, detail: `${briefDone}/${briefFields.length} campi chiave` },
     { key: 'indice', label: 'Indice', ratio: Math.min(1, n / 5), detail: n ? `${n} capitoli` : 'da creare' },

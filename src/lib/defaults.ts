@@ -22,6 +22,14 @@ export function defaultCover(title: string, author: string): CoverSpec {
   return { template: p.template, palette: { ...p.palette }, titleFont: p.titleFont, title, subtitle: '', author, tagline: '', backText: '', seed: 7 };
 }
 
+/** Valori di partenza di un libro da colorare: 8,5×11 in, carta bianca, tutta pagina, indice dei disegni. */
+export function defaultColoring(): NonNullable<Project['coloring']> {
+  return { pages: [], ageRange: '4-8 anni', toc: true, captions: false };
+}
+export function coloringLayout(): LayoutSettings {
+  return { ...defaultLayout(), trim: '8.5x11', paper: 'white', bleed: false, runningHeaders: false, readerAiNotice: true };
+}
+
 export function defaultKdp(): KdpMeta {
   return {
     description: '', keywords: [], categories: [], listPricePaperback: 12.99, listPriceEbook: 4.99,

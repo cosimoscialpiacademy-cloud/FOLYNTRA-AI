@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { BriefTab } from '@/components/project/brief-tab';
+import { ColoringTab } from '@/components/project/coloring-tab';
 import { KitTab } from '@/components/project/kit-tab';
 import { MarketingTab } from '@/components/project/marketing-tab';
 import { SalesTab } from '@/components/project/sales-tab';
@@ -22,7 +23,7 @@ import { cn, nowIso } from '@/lib/utils';
 function Workspace({ initial }: { initial: Project }) {
   const store = useStore();
   const [project, setProject] = useState(initial);
-  const [tab, setTab] = useState<TabKey>(() => (typeof window !== 'undefined' && (['brief', 'indice', 'scrittura', 'studio', 'kit', 'marketing', 'vendite'] as const).find((t) => `#${t}` === window.location.hash)) || 'brief');
+  const [tab, setTab] = useState<TabKey>(() => (typeof window !== 'undefined' && (['brief', 'indice', 'scrittura', 'disegni', 'studio', 'kit', 'marketing', 'vendite'] as const).find((t) => `#${t}` === window.location.hash)) || 'brief');
   const chapters = useLive('chapters', project.id);
   const exports = useLive('exports', project.id);
   const niches = useLive('niches');
@@ -104,6 +105,7 @@ function Workspace({ initial }: { initial: Project }) {
         {tab === 'brief' && <BriefTab {...props} />}
         {tab === 'indice' && <OutlineTab {...props} />}
         {tab === 'scrittura' && <WriterTab {...props} />}
+        {tab === 'disegni' && <ColoringTab {...props} />}
         {tab === 'studio' && <StudioTab {...props} />}
         {tab === 'kit' && <KitTab {...props} />}
         {tab === 'marketing' && <MarketingTab {...props} />}

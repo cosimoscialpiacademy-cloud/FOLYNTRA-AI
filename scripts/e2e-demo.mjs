@@ -239,6 +239,45 @@ try {
     return 'ACOS 41,06% · ROAS 2,44 · royalties 25,90 EUR';
   });
 
+  await step('Libro da colorare: tipo, 15 mandala, PDF con indice e pagine bianche, kit solo cartaceo', async () => {
+    const COLOR_TITLE = 'Animali del mare da colorare';
+    await page.goto(`${BASE}/nicchie`, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: 'Organizzazione domestica per piccoli appartamenti' }).first().click();
+    await page.getByLabel('Nome del progetto / titolo di lavoro').fill(COLOR_TITLE);
+    await page.getByLabel(/Accetto il rischio/).check();
+    await page.getByRole('button', { name: 'Crea il libro' }).click();
+    await page.waitForURL('**/progetti/**');
+    await page.getByRole('heading', { name: COLOR_TITLE }).waitFor();
+    await page.getByLabel('Autore (nome in copertina)').fill('Mario Rossi');
+    await page.getByLabel('Tipo di libro').selectOption('coloring');
+    await page.getByRole('tab', { name: /Disegni/ }).waitFor();
+    assert((await page.getByRole('tab', { name: /^\d? ?Scrittura/ }).count()) === 0, 'un libro da colorare non deve avere la scheda Scrittura');
+    await page.getByRole('tab', { name: /Disegni/ }).click();
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: /5 mandala/ }).click();
+    await page.getByText(/15 disegni/).first().waitFor();
+    await page.getByRole('button', { name: /Disegna con IA le 0 mancanti/ }).isDisabled();
+    await shot('10-disegni');
+    await page.getByRole('tab', { name: /Cover/ }).click();
+    await page.getByRole('button', { name: /Genera anteprima PDF interno/ }).click();
+    await page.getByText(/PDF interno pronto/).waitFor({ timeout: 180_000 });
+    const pagesTxt = await page.getByText(/Dorso:/).innerText();
+    await page.getByRole('tab', { name: /KDP Kit/ }).click();
+    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 240_000 }), page.getByRole('button', { name: /Esporta ZIP KDP/ }).click()]);
+    const zp = path.join(OUT, `colorare-${download.suggestedFilename()}`);
+    await download.saveAs(zp);
+    const zip = await JSZip.loadAsync(readFileSync(zp));
+    const names = Object.values(zip.files).filter((f) => !f.dir).map((f) => f.name);
+    assert(names.includes('manuscript.pdf') && names.includes('cover-print.pdf'), 'mancano PDF interno o copertina');
+    assert(!names.some((n) => n.endsWith('.epub') || n.endsWith('.docx') || n.startsWith('bonus/')), 'un libro da colorare non deve avere EPUB/DOCX/bonus');
+    const qa = JSON.parse(await zip.file('qa-report.json').async('string'));
+    const ck = (id) => qa.checks.find((c) => c.id === id);
+    assert(ck('colora.disegni')?.result === 'ok', 'controllo disegni non ok');
+    assert(ck('colora.ia')?.result === 'ok', 'dichiarazione IA incoerente');
+    assert(qa.kdpReady === false, 'senza conferma di diritti e revisione non può essere pronto');
+    await shot('11-kit-colorare');
+    return `${pagesTxt.replace(/\s+/g, ' ').slice(0, 60)} · ${names.length} file`;
+  });
+
   await step('Dashboard aggiornata con dati reali', async () => {
     await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' });
     await page.getByText(TITLE).first().waitFor();

@@ -16,9 +16,9 @@ export interface QaInput {
   cover: PdfReport;
   coverGeometry: CoverGeometry;
   ebookCover: { width: number; height: number; format: string };
-  epub: { ok: boolean; problems: string[] };
-  docx: { ok: boolean; problems: string[] };
-  bonusWords: number;
+  epub?: { ok: boolean; problems: string[] };
+  docx?: { ok: boolean; problems: string[] };
+  bonusWords?: number;
   /** Immagine usata in copertina (null se la copertina è solo vettoriale). */
   coverArt?: { width: number; height: number; source: 'catalogo' | 'caricata'; aiGenerated: boolean } | null;
   /** Presente solo se epubcheck è stato davvero eseguito. */
@@ -35,19 +35,36 @@ export function runQa(input: QaInput): { checks: QaCheck[]; kdpReady: boolean; i
     checks.push({ id, label, severity, result: ok === 'skip' ? 'non_eseguito' : ok ? 'ok' : 'fallito', detail });
 
   // --- Contenuto ---
+  const coloring = project.kind === 'coloring';
+  const addText = (...a: Parameters<typeof add>): void => { if (!coloring) add(...a); };
   const issues = analyzeManuscript(project, chapters);
   const crit = (kind: TextIssue['kind']) => issues.filter((i) => i.kind === kind && i.severity === 'critico');
-  add('contenuto.capitoli', 'Almeno 5 capitoli con testo', 'critico', chapters.length >= 5 && crit('lunghezza').length === 0,
+  addText('contenuto.capitoli', 'Almeno 5 capitoli con testo', 'critico', chapters.length >= 5 && crit('lunghezza').length === 0,
     chapters.length < 5 ? `Solo ${chapters.length} capitoli.` : crit('lunghezza').length ? `${crit('lunghezza').length} capitoli vuoti.` : `${chapters.length} capitoli, ${chapters.reduce((n, c) => n + wordCount(c.content), 0)} parole.`);
-  add('contenuto.mock', 'Nessun testo DEMO/mock nel manoscritto', 'critico', crit('mock').length === 0, crit('mock').length ? `Testo mock in: ${crit('mock').map((i) => i.chapterTitle).join('; ')}.` : 'Nessun segnaposto mock.');
-  add('contenuto.segnaposto', 'Nessun segnaposto non risolto', 'critico', crit('segnaposto').length === 0, crit('segnaposto').length ? `${crit('segnaposto').length} segnaposto (es. ${crit('segnaposto')[0].excerpt}).` : 'Nessun segnaposto.');
-  add('contenuto.fonti', 'Nessuna affermazione con fonte mancante', 'critico', crit('fonte').length === 0, crit('fonte').length ? `${crit('fonte').length} marcatori [FONTE MANCANTE] da risolvere.` : 'Nessun marcatore di fonte mancante.');
+  addText('contenuto.mock', 'Nessun testo DEMO/mock nel manoscritto', 'critico', crit('mock').length === 0, crit('mock').length ? `Testo mock in: ${crit('mock').map((i) => i.chapterTitle).join('; ')}.` : 'Nessun segnaposto mock.');
+  addText('contenuto.segnaposto', 'Nessun segnaposto non risolto', 'critico', crit('segnaposto').length === 0, crit('segnaposto').length ? `${crit('segnaposto').length} segnaposto (es. ${crit('segnaposto')[0].excerpt}).` : 'Nessun segnaposto.');
+  addText('contenuto.fonti', 'Nessuna affermazione con fonte mancante', 'critico', crit('fonte').length === 0, crit('fonte').length ? `${crit('fonte').length} marcatori [FONTE MANCANTE] da risolvere.` : 'Nessun marcatore di fonte mancante.');
   const dup = issues.filter((i) => i.kind === 'duplicato');
-  add('contenuto.duplicati', 'Paragrafi duplicati', 'avviso', dup.length === 0, dup.length ? `${dup.length} paragrafi quasi identici.` : 'Nessun duplicato rilevato (euristica interna, non è un controllo antiplagio).');
+  addText('contenuto.duplicati', 'Paragrafi duplicati', 'avviso', dup.length === 0, dup.length ? `${dup.length} paragrafi quasi identici.` : 'Nessun duplicato rilevato (euristica interna, non è un controllo antiplagio).');
   const idx = issues.filter((i) => i.kind === 'indice');
-  add('contenuto.indice', 'Testo coerente con l’indice', 'avviso', idx.length === 0, idx.length ? idx.map((i) => `${i.chapterTitle}: ${i.message}`).join(' ') : 'Tutte le sezioni previste sono presenti.');
+  addText('contenuto.indice', 'Testo coerente con l’indice', 'avviso', idx.length === 0, idx.length ? idx.map((i) => `${i.chapterTitle}: ${i.message}`).join(' ') : 'Tutte le sezioni previste sono presenti.');
   const unreviewed = chapters.filter((c) => c.status !== 'reviewed' && c.status !== 'locked');
-  add('revisione.capitoli', 'Revisione umana di ogni capitolo', 'critico', unreviewed.length === 0, unreviewed.length ? `${unreviewed.length} capitoli non ancora marcati come rivisti.` : 'Tutti i capitoli sono marcati come rivisti.');
+  addText('revisione.capitoli', 'Revisione umana di ogni capitolo', 'critico', unreviewed.length === 0, unreviewed.length ? `${unreviewed.length} capitoli non ancora marcati come rivisti.` : 'Tutti i capitoli sono marcati come rivisti.');
+  if (coloring) {
+    const book = project.coloring;
+    const pages = book?.pages ?? [];
+    const drawn = pages.filter((p) => p.svg || p.image);
+    add('colora.disegni', 'Ogni pagina ha un disegno', 'critico', drawn.length > 0 && drawn.length === pages.length, !pages.length ? 'Nessun disegno nel libro.' : drawn.length === pages.length ? `${drawn.length} disegni.` : `${pages.length - drawn.length} pagine senza disegno: crealo, caricalo o rimuovi la pagina.`);
+    add('colora.quantita', 'Quantità di disegni competitiva (almeno 25)', 'avviso', drawn.length >= 25, `${drawn.length} disegni (${drawn.length * 2} pagine con le pagine bianche). I libri da colorare che vendono ne hanno di solito 30–50.`);
+    const trimIn = TRIM_SIZES[project.layout.trim];
+    const boxW = trimIn.widthIn - 1.2;
+    const boxH = trimIn.heightIn - 1.2;
+    const low = drawn.filter((p) => p.image && p.width && p.height && Math.min(p.width / boxW, p.height / boxH) < 200);
+    add('colora.risoluzione', 'Risoluzione dei disegni caricati (almeno ~200 dpi)', 'avviso', low.length === 0, low.length ? `${low.length} immagini sotto i 200 dpi (es. «${low[0].title}»: ${low[0].width}×${low[0].height} px): la stampa può risultare sfocata.` : 'Tutte le immagini caricate hanno una risoluzione adeguata (i disegni vettoriali sono sempre nitidi).');
+    const aiPages = drawn.filter((p) => p.aiGenerated);
+    add('colora.ia', 'Disegni generati da IA dichiarati a KDP', 'critico', !(aiPages.length && project.kdp.aiImages === 'none'), aiPages.length && project.kdp.aiImages === 'none' ? `${aiPages.length} disegni generati da IA ma la dichiarazione indica «nessuna immagine IA».` : aiPages.length ? `${aiPages.length} disegni IA dichiarati: ${project.kdp.aiImages}.` : 'Nessun disegno dichiarato come IA.');
+    add('colora.copyright', 'Ho verificato che i disegni non imitano personaggi o marchi protetti', 'critico', project.kdp.rightsConfirmed, project.kdp.rightsConfirmed ? 'Diritti confermati dall’autore.' : 'Conferma i diritti nel KDP Kit: nessun personaggio, marchio o franchise protetto.');
+  }
   add('revisione.conferma', 'Conferma finale di revisione umana', 'critico', project.kdp.humanReviewConfirmed, project.kdp.humanReviewConfirmed ? 'Confermata dall’utente.' : 'Da confermare nel KDP Kit.');
   const unverified = project.sources.filter((s) => !s.verified);
   add('fonti.elenco', 'Fonti in elenco verificate', 'avviso', unverified.length === 0, unverified.length ? `${unverified.length} fonti non verificate: escluse dalla bibliografia.` : 'Nessuna fonte non verificata.');
@@ -71,7 +88,7 @@ export function runQa(input: QaInput): { checks: QaCheck[]; kdpReady: boolean; i
     const mockMk = marketingHasMock(mk);
     add('marketing.stato', 'Kit marketing senza testo segnaposto', 'avviso', !mockMk && pending === 0, mockMk ? 'Il kit marketing contiene testo mock: non usarlo così com’è.' : pending ? `${pending} segnaposto [DA COMPLETARE/VERIFICARE] da sistemare nel kit marketing.` : 'Nessun segnaposto rimasto (resta da rivedere a mano).');
   }
-  const anyAi = chapters.some((c) => c.aiGenerated);
+  const anyAi = coloring ? false : chapters.some((c) => c.aiGenerated);
   add('ia.dichiarazione', 'Dichiarazione IA coerente con il contenuto', 'critico', !(anyAi && project.kdp.aiText === 'none'),
     anyAi && project.kdp.aiText === 'none' ? 'Ci sono capitoli generati da IA ma la dichiarazione indica "nessun testo IA".' : `Testo: ${project.kdp.aiText}; immagini: ${project.kdp.aiImages}; traduzioni: ${project.kdp.aiTranslation}.`);
   const badges = (project.cover.badges ?? []).filter((b) => b.text.trim());
@@ -113,13 +130,13 @@ export function runQa(input: QaInput): { checks: QaCheck[]; kdpReady: boolean; i
   add('cover.ebook', 'Cover eBook JPEG 1600 × 2560', 'critico', input.ebookCover.format === 'jpeg' && input.ebookCover.width === 1600 && input.ebookCover.height === 2560, `${input.ebookCover.format.toUpperCase()} ${input.ebookCover.width} × ${input.ebookCover.height} px.`);
 
   // --- eBook / DOCX ---
-  add('epub.struttura', 'EPUB: struttura valida (verifica interna)', 'critico', input.epub.ok, input.epub.ok ? 'mimetype, container, OPF, manifest, spine, nav e XHTML ben formati.' : input.epub.problems.join('; '));
-  add('epub.epubcheck', 'EPUB: validazione con epubcheck', 'avviso', input.epubcheck ? input.epubcheck.ok : 'skip', input.epubcheck ? input.epubcheck.detail : 'Non eseguita (EPUBCHECK_JAR non configurato): validare con epubcheck o Kindle Previewer.');
-  add('docx.struttura', 'DOCX: struttura valida (verifica interna)', 'critico', input.docx.ok, input.docx.ok ? 'Parti OOXML presenti e ben formate.' : input.docx.problems.join('; '));
+  if (input.epub) add('epub.struttura', 'EPUB: struttura valida (verifica interna)', 'critico', input.epub.ok, input.epub.ok ? 'mimetype, container, OPF, manifest, spine, nav e XHTML ben formati.' : input.epub.problems.join('; '));
+  if (input.epub) add('epub.epubcheck', 'EPUB: validazione con epubcheck', 'avviso', input.epubcheck ? input.epubcheck.ok : 'skip', input.epubcheck ? input.epubcheck.detail : 'Non eseguita (EPUBCHECK_JAR non configurato): validare con epubcheck o Kindle Previewer.');
+  if (input.docx) add('docx.struttura', 'DOCX: struttura valida (verifica interna)', 'critico', input.docx.ok, input.docx.ok ? 'Parti OOXML presenti e ben formate.' : input.docx.problems.join('; '));
 
   // --- Bonus e passaggi manuali ---
   const total = chapters.reduce((n, c) => n + wordCount(c.content), 0);
-  add('bonus.limite', 'Bonus entro il 10% del libro (se inserito nel libro)', 'info', true, `Bonus scaricabile separato: ${input.bonusWords} parole (${total ? Math.round((input.bonusWords / total) * 100) : 0}% del testo). Non è incluso nel manoscritto.`);
+  if (!coloring) add('bonus.limite', 'Bonus entro il 10% del libro (se inserito nel libro)', 'info', true, `Bonus scaricabile separato: ${input.bonusWords ?? 0} parole (${total ? Math.round(((input.bonusWords ?? 0) / total) * 100) : 0}% del testo). Non è incluso nel manoscritto.`);
   add('manuale.previewer', 'Anteprima nel KDP Previewer', 'info', 'skip', 'Passaggio manuale: caricare i file su KDP e controllare l’anteprima ufficiale.');
   add('manuale.prova', 'Copia di prova cartacea', 'info', 'skip', 'Consigliata prima della pubblicazione.');
 

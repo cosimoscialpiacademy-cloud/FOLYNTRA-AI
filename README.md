@@ -120,3 +120,6 @@ Non ancora verificato dal vivo su Railway: la generazione del PDF con Chromium n
 
 ### Copertine: sfondi su misura ed etichette
 Nel tab Copertina l'agente propone concept con sfondo personalizzato (copia il prompt in ChatGPT, carica l'immagine) e etichette (fascia bonus, sigillo, invito). Elenca nel campo «bonus» solo contenuti reali del libro; poi conferma in Studio → «Etichette sulla copertina». Frasi come bestseller, premi, prezzi o promesse di salute sono bloccate dal QA.
+
+### Libro da colorare
+Nel Brief scegli «Libro da colorare»: compare la scheda **Disegni**. Pianifica le pagine con l'IA, fai disegnare (vettoriale, semplice), carica immagini da ChatGPT/altro o aggiungi mandala gratuiti. L'interno ha una pagina bianca dietro ogni disegno, indice con pagine reali e dorso calcolato; il kit è solo cartaceo. Dichiara le immagini IA a KDP (lo fa in automatico il kit) e non usare personaggi protetti.

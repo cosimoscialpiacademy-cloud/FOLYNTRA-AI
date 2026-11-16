@@ -9,6 +9,7 @@ import { briefContext, logActivity, recordCost, spentUsd } from '@/lib/generatio
 import { MARKETPLACES } from '@/lib/kdp/specs';
 import { useApp, useStore } from '@/lib/store/context';
 import type { BookKind, Brief } from '@/lib/types';
+import { coloringLayout, defaultColoring } from '@/lib/defaults';
 import { uid } from '@/lib/utils';
 import type { TabProps } from './types';
 
@@ -16,6 +17,7 @@ const KINDS: { value: BookKind; label: string }[] = [
   { value: 'nonfiction', label: 'Manuale pratico / saggistica' },
   { value: 'workbook', label: 'Workbook con esercizi' },
   { value: 'cookbook', label: 'Ricettario' },
+  { value: 'coloring', label: 'Libro da colorare (disegni a tutta pagina)' },
 ];
 
 export function BriefTab({ project, niche, update, goTo }: TabProps) {
@@ -24,6 +26,11 @@ export function BriefTab({ project, niche, update, goTo }: TabProps) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const setBrief = (patch: Partial<Brief>) => update({ brief: { ...project.brief, ...patch } });
+  /** Passando a «da colorare» si impostano subito formato 8,5×11, carta bianca e dichiarazione IA; il resto resta com'è. */
+  function changeKind(kind: BookKind) {
+    if (kind === 'coloring' && project.kind !== 'coloring') update({ kind, layout: coloringLayout(), coloring: project.coloring ?? defaultColoring(), pageCount: null });
+    else update({ kind, ...(kind !== 'coloring' && project.kind === 'coloring' ? { pageCount: null } : {}) });
+  }
   const m = MARKETPLACES[project.marketplace];
 
   async function generateConcept() {
@@ -73,7 +80,7 @@ export function BriefTab({ project, niche, update, goTo }: TabProps) {
           )}
           <Field label="Sottotitolo" className="sm:col-span-2">{(id) => <Input id={id} value={project.subtitle} onChange={(e) => update({ subtitle: e.target.value })} />}</Field>
           <Field label="Autore (nome in copertina)">{(id) => <Input id={id} value={project.author} onChange={(e) => update({ author: e.target.value })} />}</Field>
-          <Field label="Tipo di libro">{(id) => <Select id={id} value={project.kind} onChange={(e) => update({ kind: e.target.value as BookKind })}>{KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}</Select>}</Field>
+          <Field label="Tipo di libro">{(id) => <Select id={id} value={project.kind} onChange={(e) => changeKind(e.target.value as BookKind)}>{KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}</Select>}</Field>
           <Field label="Mercato e lingua" hint="Ereditati dalla nicchia.">{(id) => <Input id={id} disabled value={`${m.label} · ${m.language}`} />}</Field>
           <Field label="Parole obiettivo totali" hint="Scegli in base al valore per il lettore, non a un numero di pagine.">{(id) => <Input id={id} type="number" min={3000} max={120000} step={1000} value={project.targetWords} onChange={(e) => update({ targetWords: Math.max(0, Number(e.target.value) || 0) })} />}</Field>
           <Field label="Tetto di spesa AI per questo libro (USD)" hint={`Il server applica comunque il limite massimo di ${status?.ai.maxUsdPerBook ?? 20} $.`}>{(id) => <Input id={id} type="number" min={0} step={1} value={project.budgetUsd} onChange={(e) => update({ budgetUsd: Math.max(0, Number(e.target.value) || 0) })} />}</Field>
@@ -149,7 +156,7 @@ export function BriefTab({ project, niche, update, goTo }: TabProps) {
         </Card>
       </div>
 
-      <div className="flex justify-end"><Button size="lg" onClick={() => goTo('indice')}>Avanti: indice</Button></div>
+      <div className="flex justify-end"><Button size="lg" onClick={() => goTo(project.kind === 'coloring' ? 'disegni' : 'indice')}>{project.kind === 'coloring' ? 'Avanti: disegni' : 'Avanti: indice'}</Button></div>
     </div>
   );
 }

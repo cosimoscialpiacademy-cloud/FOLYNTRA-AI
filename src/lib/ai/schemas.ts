@@ -5,7 +5,7 @@ const short = z.string().max(600);
 const long = z.string().max(6000);
 
 export const BriefCtx = z.object({
-  title: short, subtitle: short, kind: z.enum(['nonfiction', 'workbook', 'cookbook']), language: short, marketplace: short,
+  title: short, subtitle: short, kind: z.enum(['nonfiction', 'workbook', 'cookbook', 'coloring']), language: short, marketplace: short,
   keyword: short, audience: long, problem: long, goal: long, uniqueValue: long, exclusions: long, style: long, synopsis: long,
 });
 export type BriefCtx = z.infer<typeof BriefCtx>;
@@ -150,6 +150,26 @@ export const MarketTextOutput = z.object({
 });
 export type MarketTextOutput = z.infer<typeof MarketTextOutput>;
 
+export const ColoringPlanInput = z.object({
+  brief: BriefCtx, ageRange: short, count: z.number().int().min(6).max(60), notes: long,
+});
+export const ColoringPlanOutput = z.object({
+  styleGuide: z.string().max(1200).describe('Stile comune a tutte le pagine, in inglese, adatto a essere incollato in un generatore di immagini'),
+  pages: z.array(z.object({
+    title: z.string().max(80).describe('Titolo breve della pagina, nella lingua del libro'),
+    subject: z.string().max(400).describe('Descrizione in inglese di cosa disegnare: un soggetto principale chiaro più 2-4 elementi di contorno'),
+  })).min(6).max(60),
+});
+export type ColoringPlanOutput = z.infer<typeof ColoringPlanOutput>;
+
+export const ColoringPageInput = z.object({
+  subject: z.string().min(3).max(500), ageRange: short, styleGuide: z.string().max(1200), language: short, title: short,
+});
+export const ColoringPageOutput = z.object({
+  svg: z.string().min(200).max(80000).describe('Un unico elemento <svg> con viewBox 0 0 1000 1300, solo tratti neri'),
+});
+export type ColoringPageOutput = z.infer<typeof ColoringPageOutput>;
+
 export const AiRequest = z.discriminatedUnion('task', [
   z.object({ task: z.literal('brainstorm'), input: BrainstormInput }),
   z.object({ task: z.literal('concept'), input: ConceptInput }),
@@ -161,6 +181,8 @@ export const AiRequest = z.discriminatedUnion('task', [
   z.object({ task: z.literal('marketText'), input: MarketTextInput }),
   z.object({ task: z.literal('cover'), input: CoverInput }),
   z.object({ task: z.literal('coverCritique'), input: CoverCritiqueInput }),
+  z.object({ task: z.literal('coloringPlan'), input: ColoringPlanInput }),
+  z.object({ task: z.literal('coloringPage'), input: ColoringPageInput }),
 ]).and(z.object({
   projectId: z.string().max(80).nullable(),
   /** Spesa già registrata per il libro (USD) e tetto scelto dall'utente. */

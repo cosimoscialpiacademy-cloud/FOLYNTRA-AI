@@ -29,7 +29,9 @@ export function StudioTab({ project, chapters, niche, update, goTo }: TabProps) 
   const cover = project.cover;
   const layout = project.layout;
   const trim = TRIM_SIZES[layout.trim];
-  const written = chapters.filter((c) => wordCount(c.content) > 0).length;
+  const coloring = project.kind === 'coloring';
+  const drawn = (project.coloring?.pages ?? []).filter((p) => p.svg || p.image).length;
+  const written = coloring ? drawn : chapters.filter((c) => wordCount(c.content) > 0).length;
 
   useEffect(() => () => { if (pdf) URL.revokeObjectURL(pdf.url); }, [pdf]);
 
@@ -86,10 +88,10 @@ export function StudioTab({ project, chapters, niche, update, goTo }: TabProps) 
   const aspect = view === 'completa' && geometry ? geometry.fullWidthIn / geometry.fullHeightIn : trim.widthIn / trim.heightIn;
 
   async function renderInterior() {
-    if (!written) return toast('Serve almeno un capitolo con testo.', 'bad');
+    if (!written) return toast(coloring ? 'Serve almeno un disegno.' : 'Serve almeno un capitolo con testo.', 'bad');
     setRendering(true);
     try {
-      const r = await callExport('interior', { project, chapters: chapters.filter((c) => wordCount(c.content) > 0) }, await getToken());
+      const r = await callExport('interior', { project, chapters: coloring ? [] : chapters.filter((c) => wordCount(c.content) > 0) }, await getToken());
       setPdf({ url: URL.createObjectURL(r.blob), blob: r.blob, fileName: r.fileName });
       update({ pageCount: r.pageCount });
       await logActivity(store, project.id, `Anteprima PDF interno generata: ${r.pageCount} pagine reali (${layout.trim}).`);
@@ -239,7 +241,7 @@ export function StudioTab({ project, chapters, niche, update, goTo }: TabProps) 
             <label className="flex items-center gap-2"><input type="checkbox" className="size-4 accent-cyan" checked={layout.readerAiNotice} onChange={(e) => setLayout({ readerAiNotice: e.target.checked }, false)} /> Avviso al lettore sull’uso dell’IA nella pagina del copyright</label>
           </div>
         </div>
-        <p className="mt-3 text-sm text-slate2">Margini a specchio con gabbia adeguata al numero di pagine, capitoli sempre su pagina destra, numerazione, indice con i numeri di pagina reali, riquadri e tabelle. Font incorporati nel PDF.</p>
+        <p className="mt-3 text-sm text-slate2">{coloring ? 'Un disegno a tutta pagina sempre a destra, pagina bianca dietro (il pennarello non trasparisce sul disegno dopo), frontespizio, pagina «appartiene a», numerazione e indice dei disegni con i numeri di pagina reali.' : 'Margini a specchio con gabbia adeguata al numero di pagine, capitoli sempre su pagina destra, numerazione, indice con i numeri di pagina reali, riquadri e tabelle. Font incorporati nel PDF.'}</p>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button variant="gold" onClick={() => void renderInterior()} loading={rendering} disabled={status?.renderer === false}><FileText className="size-4" aria-hidden /> {rendering ? 'Impaginazione in corso…' : 'Genera anteprima PDF interno'}</Button>
@@ -247,7 +249,7 @@ export function StudioTab({ project, chapters, niche, update, goTo }: TabProps) 
           {project.pageCount && <Badge tone={project.pageCount >= MIN_PAGES ? 'ok' : 'bad'}>{project.pageCount} pagine{project.pageCount < MIN_PAGES ? ` · minimo KDP ${MIN_PAGES}` : ''}</Badge>}
         </div>
         {status?.renderer === false && <Notice tone="bad" className="mt-3">Renderer PDF non disponibile su questo server: manca Chromium (variabile CHROMIUM_EXECUTABLE_PATH).</Notice>}
-        {written < chapters.length && <p className="mt-2 text-xs text-warn">{chapters.length - written} capitoli sono ancora vuoti: l’anteprima include solo quelli scritti.</p>}
+        {!coloring && written < chapters.length && <p className="mt-2 text-xs text-warn">{chapters.length - written} capitoli sono ancora vuoti: l’anteprima include solo quelli scritti.</p>}
         {pdf && <iframe title="Anteprima PDF interno" src={pdf.url} className="mt-4 hidden h-[36rem] w-full rounded-lg border border-line md:block" />}
         {pdf && <p className="mt-2 text-xs text-slate2 md:hidden">Su telefono apri il PDF con “Scarica PDF”.</p>}
       </Card>
