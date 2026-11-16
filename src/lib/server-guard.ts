@@ -1,6 +1,7 @@
 /** Autenticazione e limiti lato server per le route API. */
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { supabaseConfigured } from './ai/server';
+import { accessCodeConfigured, supabaseConfigured } from './ai/server';
 
 export interface Caller {
   id: string;
@@ -13,11 +14,38 @@ export class HttpError extends Error {
   }
 }
 
-/** Con Supabase configurato serve un JWT valido; altrimenti l'app è in modalità locale. */
+/** IP del client: l'ultimo valore di x-forwarded-for è quello aggiunto dal proxy di fiducia (i precedenti sono falsificabili). */
+export function clientIp(req: Request): string {
+  const parts = req.headers.get('x-forwarded-for')?.split(',').map((p) => p.trim()).filter(Boolean);
+  return parts?.at(-1) || 'locale';
+}
+
+function sha(s: string): Buffer {
+  return createHash('sha256').update(s).digest();
+}
+
+export interface AccessState {
+  /** true se il server richiede un codice di accesso (APP_ACCESS_CODE impostato, senza Supabase). */
+  required: boolean;
+  valid: boolean;
+}
+
+/** Controlla il codice di accesso inviato come Bearer. I tentativi errati sono limitati per IP. */
+export function checkAccessCode(req: Request): AccessState {
+  if (supabaseConfigured() || !accessCodeConfigured()) return { required: false, valid: true };
+  const sent = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+  if (!sent) return { required: true, valid: false };
+  const ok = timingSafeEqual(sha(sent), sha(process.env.APP_ACCESS_CODE!.trim()));
+  if (!ok) rateLimit(`badcode:${clientIp(req)}`, 8, 10 * 60_000);
+  return { required: true, valid: ok };
+}
+
+/** Con Supabase configurato serve un JWT valido; altrimenti codice di accesso (se impostato) o modalità locale. */
 export async function requireCaller(req: Request): Promise<Caller> {
   if (!supabaseConfigured()) {
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'locale';
-    return { id: `anon:${ip}`, authenticated: false };
+    const access = checkAccessCode(req);
+    if (access.required && !access.valid) throw new HttpError(401, 'Codice di accesso mancante o errato.');
+    return { id: `anon:${clientIp(req)}`, authenticated: access.required };
   }
   const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!token) throw new HttpError(401, 'Accesso richiesto.');

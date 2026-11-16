@@ -122,7 +122,7 @@ export function KitTab({ project, chapters, update }: TabProps) {
               <thead className="text-xs uppercase tracking-wider text-slate2"><tr><th className="px-1 py-1.5">Prezzo</th><th className="px-1">Aliquota</th><th className="px-1">Costo stampa</th><th className="px-1">Royalty / copia</th></tr></thead>
               <tbody className="divide-y divide-line">
                 {ladder.map((r) => (
-                  <tr key={r.listPrice}><td className="px-1 py-1.5">{formatMoney(r.listPrice, m.currency)}</td><td className="px-1">{Math.round(r.rate * 100)}%</td><td className="px-1">{formatMoney(r.printingCost, m.currency)}</td><td className={`px-1 font-semibold ${r.royalty < 0 ? 'text-bad' : 'text-midnight'}`}>{formatMoney(r.royalty, m.currency)}</td></tr>
+                  <tr key={r.listPrice}><td className="px-1 py-1.5">{formatMoney(r.listPrice, m.currency)}</td><td className="px-1">{Math.round(r.rate * 100)}%</td><td className="px-1">{formatMoney(r.printingCost, m.currency)}</td><td className={`px-1 font-semibold ${r.royalty < 0 ? 'text-bad' : 'text-ink'}`}>{formatMoney(r.royalty, m.currency)}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -143,12 +143,12 @@ export function KitTab({ project, chapters, update }: TabProps) {
         </div>
         {anyAi && kdp.aiText === 'none' && <Notice tone="bad" className="mt-3">Ci sono capitoli generati da IA: la dichiarazione “Testo” non può essere “nessun contenuto”. <button className="font-semibold underline" onClick={() => setKdp({ aiText: 'generated' })}>Imposta “generato da IA”</button></Notice>}
         <div className="mt-3 space-y-2 text-sm">
-          <label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5 size-4 accent-[#8a6a2b]" checked={kdp.rightsConfirmed} onChange={(e) => setKdp({ rightsConfirmed: e.target.checked })} /> Confermo di detenere i diritti sul contenuto e che testi, font e grafiche sono originali o regolarmente licenziati.</label>
-          <label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5 size-4 accent-[#8a6a2b]" checked={kdp.humanReviewConfirmed} onChange={(e) => setKdp({ humanReviewConfirmed: e.target.checked })} /> Confermo di aver riletto e corretto personalmente l’intero libro (fatti, fonti, qualità).</label>
+          <label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5 size-4 accent-cyan" checked={kdp.rightsConfirmed} onChange={(e) => setKdp({ rightsConfirmed: e.target.checked })} /> Confermo di detenere i diritti sul contenuto e che testi, font e grafiche sono originali o regolarmente licenziati.</label>
+          <label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5 size-4 accent-cyan" checked={kdp.humanReviewConfirmed} onChange={(e) => setKdp({ humanReviewConfirmed: e.target.checked })} /> Confermo di aver riletto e corretto personalmente l’intero libro (fatti, fonti, qualità).</label>
         </div>
       </Card>
 
-      <Card className="border-gold/60">
+      <Card className="border-cyan/60">
         <CardTitle>Esporta il KDP Publish Kit</CardTitle>
         <p className="mb-3 text-sm text-slate2">Un clic crea lo ZIP: manuscript.pdf, cover-print.pdf (dorso dalle pagine reali), cover-ebook.jpg, ebook.epub, editable.docx, bonus, metadati, descrizione HTML, simulazione royalty, dichiarazione IA, diritti, checklist, guida al caricamento, report QA e manifest SHA-256.</p>
         <div className="flex flex-wrap items-center gap-2">
@@ -160,7 +160,7 @@ export function KitTab({ project, chapters, update }: TabProps) {
         {last && (
           <div className="mt-5 border-t border-line pt-4" data-testid="export-result">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-serif text-lg font-bold text-midnight">Ultima esportazione</h3>
+              <h3 className="font-display text-lg font-bold text-ink">Ultima esportazione</h3>
               {last.kdpReady ? <Badge tone="ok">PRONTO PER IL CARICAMENTO MANUALE</Badge> : <Badge tone="bad">BOZZA — NON PRONTO PER KDP</Badge>}
               <span className="text-xs text-slate2">{formatDateTime(last.createdAt)} · {last.pageCount} pagine</span>
             </div>
@@ -173,14 +173,14 @@ export function KitTab({ project, chapters, update }: TabProps) {
                 </li>
               ))}
             </ul>
-            <h4 className="mt-4 text-sm font-semibold text-midnight">File nel pacchetto</h4>
+            <h4 className="mt-4 text-sm font-semibold text-ink">File nel pacchetto</h4>
             <ul className="mt-1 divide-y divide-line">
               {last.files.map((f) => (
                 <li key={f.name} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 py-1.5 text-sm">
                   <span className="min-w-0 break-all font-medium text-ink">{f.name}</span>
                   <span className="flex items-center gap-2 text-xs text-slate2">
                     {formatBytes(f.bytes)} · <span title={f.sha256}>sha256 {f.sha256.slice(0, 10)}…</span>
-                    {zip && <button className="font-medium text-golddeep hover:underline" onClick={() => void downloadOne(f.name)}>scarica</button>}
+                    {zip && <button className="font-medium text-cyan hover:underline" onClick={() => void downloadOne(f.name)}>scarica</button>}
                   </span>
                 </li>
               ))}
@@ -200,7 +200,7 @@ export function KitTab({ project, chapters, update }: TabProps) {
               </Select>
             )}
           </Field>
-          <a href="https://kdp.amazon.com/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line bg-white px-4 text-sm font-medium hover:bg-ivory">Apri KDP (sito ufficiale) <ExternalLink className="size-4" aria-hidden /></a>
+          <a href="https://kdp.amazon.com/" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line bg-card px-4 text-sm font-medium hover:bg-ivory">Apri KDP (sito ufficiale) <ExternalLink className="size-4" aria-hidden /></a>
         </div>
         {!last?.kdpReady && <p className="mt-2 text-xs text-slate2">Gli stati successivi si sbloccano solo dopo un’esportazione con tutti i controlli critici superati.</p>}
         <p className="mt-2 text-xs text-slate2">Promemoria: KDP limita il numero di nuovi titoli per formato a settimana; controlla la policy aggiornata prima di inviare.</p>

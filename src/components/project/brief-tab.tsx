@@ -66,7 +66,7 @@ export function BriefTab({ project, niche, update, goTo }: TabProps) {
               <p className="text-sm font-medium text-ink">Titoli alternativi <span className="font-normal text-slate2">(tocca per usarne uno)</span></p>
               <div className="mt-1.5 flex flex-wrap gap-2">
                 {project.altTitles.map((t) => (
-                  <button key={t} className="rounded-full border border-line bg-white px-3 py-1.5 text-left text-sm hover:border-golddeep hover:bg-gold/10" onClick={() => update({ title: t, altTitles: [project.title, ...project.altTitles.filter((x) => x !== t)].filter(Boolean).slice(0, 6) })}>{t}</button>
+                  <button key={t} className="rounded-full border border-line bg-card px-3 py-1.5 text-left text-sm hover:border-cyan hover:bg-cyan/10" onClick={() => update({ title: t, altTitles: [project.title, ...project.altTitles.filter((x) => x !== t)].filter(Boolean).slice(0, 6) })}>{t}</button>
                 ))}
               </div>
             </div>
@@ -119,7 +119,7 @@ export function BriefTab({ project, niche, update, goTo }: TabProps) {
                   <Input aria-label={`Citazione fonte ${i + 1}`} placeholder="Autore, Titolo, editore, anno" value={s.citation} onChange={(e) => set({ citation: e.target.value })} />
                   <Input aria-label={`URL fonte ${i + 1}`} className="mt-2" placeholder="URL (facoltativo)" value={s.url} onChange={(e) => set({ url: e.target.value })} />
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-[#8a6a2b]" checked={s.verified} onChange={(e) => set({ verified: e.target.checked })} /> L’ho consultata e verificata</label>
+                    <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-cyan" checked={s.verified} onChange={(e) => set({ verified: e.target.checked })} /> L’ho consultata e verificata</label>
                     <div className="flex items-center gap-2">
                       {s.verified ? <Badge tone="ok">verificata</Badge> : <Badge tone="warn">non verificata</Badge>}
                       <button aria-label={`Rimuovi fonte ${i + 1}`} className="p-1 text-slate2 hover:text-bad" onClick={() => update({ sources: project.sources.filter((_, j) => j !== i) })}><Trash2 className="size-4" aria-hidden /></button>

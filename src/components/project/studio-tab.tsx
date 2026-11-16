@@ -67,9 +67,9 @@ export function StudioTab({ project, chapters, update, goTo }: TabProps) {
               const selected = cover.template === p.template;
               return (
                 <button key={p.template} aria-pressed={selected} onClick={() => setCover({ template: p.template, palette: { ...p.palette }, titleFont: p.titleFont })}
-                  className={cn('rounded-lg border p-1.5 text-left transition-shadow sm:p-2', selected ? 'border-gold shadow-md' : 'border-line hover:shadow')}>
+                  className={cn('rounded-lg border p-1.5 text-left transition-shadow sm:p-2', selected ? 'border-cyan shadow-md' : 'border-line hover:shadow')}>
                   <div className="overflow-hidden rounded" style={{ aspectRatio: `${trim.widthIn}/${trim.heightIn}` }} dangerouslySetInnerHTML={{ __html: frontCoverSvg({ ...cover, template: p.template, palette: p.palette, titleFont: p.titleFont }, trim.widthIn, trim.heightIn) }} />
-                  <p className="mt-1.5 text-sm font-semibold text-midnight">{p.label}</p>
+                  <p className="mt-1.5 text-sm font-semibold text-ink">{p.label}</p>
                   <p className="hidden text-xs text-slate2 sm:block">{p.description}</p>
                 </button>
               );
@@ -96,7 +96,7 @@ export function StudioTab({ project, chapters, update, goTo }: TabProps) {
             {(['background', 'accent', 'text'] as const).map((k) => (
               <label key={k} className="flex flex-col gap-1 text-sm font-medium text-ink">
                 {{ background: 'Fondo', accent: 'Accento', text: 'Testo' }[k]}
-                <input type="color" className="h-11 w-16 cursor-pointer rounded border border-line bg-white p-1" value={hex(cover.palette[k])} onChange={(e) => setCover({ palette: { ...cover.palette, [k]: e.target.value } })} />
+                <input type="color" className="h-11 w-16 cursor-pointer rounded border border-line bg-card p-1" value={hex(cover.palette[k])} onChange={(e) => setCover({ palette: { ...cover.palette, [k]: e.target.value } })} />
               </label>
             ))}
             <Button variant="outline" onClick={() => setCover({ seed: Math.floor(Math.random() * 100000) })}><Shuffle className="size-4" aria-hidden /> Varia il motivo grafico</Button>
@@ -106,9 +106,9 @@ export function StudioTab({ project, chapters, update, goTo }: TabProps) {
 
         <div className="order-1 lg:order-2">
           <Card className="lg:sticky lg:top-28">
-            <div className="mb-3 flex gap-1 rounded-lg bg-black/5 p-1" role="group" aria-label="Vista copertina">
+            <div className="mb-3 flex gap-1 rounded-lg bg-white/5 p-1" role="group" aria-label="Vista copertina">
               {(['fronte', 'completa'] as const).map((v) => (
-                <button key={v} aria-pressed={view === v} onClick={() => setView(v)} className={cn('min-h-9 flex-1 rounded-md px-2 text-sm font-medium', view === v ? 'bg-white text-midnight shadow-sm' : 'text-slate2')}>
+                <button key={v} aria-pressed={view === v} onClick={() => setView(v)} className={cn('min-h-9 flex-1 rounded-md px-2 text-sm font-medium', view === v ? 'bg-card text-ink shadow-sm' : 'text-slate2')}>
                   {v === 'fronte' ? 'Fronte / eBook' : 'Retro + dorso + fronte'}
                 </button>
               ))}
@@ -116,7 +116,7 @@ export function StudioTab({ project, chapters, update, goTo }: TabProps) {
             {view === 'completa' && !geometry ? (
               <Notice tone="warn">Il dorso dipende dalle pagine reali del PDF interno. Genera prima l’anteprima dell’interno qui sotto: non viene mostrato un dorso “stimato”.</Notice>
             ) : (
-              <div className="mx-auto overflow-hidden rounded shadow-lg ring-1 ring-black/10" style={{ aspectRatio: String(aspect), maxWidth: view === 'fronte' ? '18rem' : '100%' }} data-testid="cover-preview" dangerouslySetInnerHTML={{ __html: svg }} />
+              <div className="mx-auto overflow-hidden rounded shadow-lg ring-1 ring-white/10" style={{ aspectRatio: String(aspect), maxWidth: view === 'fronte' ? '18rem' : '100%' }} data-testid="cover-preview" dangerouslySetInnerHTML={{ __html: svg }} />
             )}
             {geometry ? (
               <ul className="mt-3 space-y-1 text-xs text-slate2">
@@ -141,9 +141,9 @@ export function StudioTab({ project, chapters, update, goTo }: TabProps) {
           <Field label="Corpo (pt)">{(id) => <Input id={id} type="number" min={9} max={14} step={0.5} value={layout.fontSizePt} onChange={(e) => setLayout({ fontSizePt: Math.max(8, Math.min(16, Number(e.target.value) || 11)) })} />}</Field>
           <Field label="Interlinea">{(id) => <Input id={id} type="number" min={1.2} max={1.8} step={0.05} value={layout.lineHeight} onChange={(e) => setLayout({ lineHeight: Math.max(1.1, Math.min(2, Number(e.target.value) || 1.45)) })} />}</Field>
           <div className="flex flex-col justify-end gap-2 text-sm sm:col-span-2 lg:col-span-3">
-            <label className="flex items-center gap-2"><input type="checkbox" className="size-4 accent-[#8a6a2b]" checked={layout.runningHeaders} onChange={(e) => setLayout({ runningHeaders: e.target.checked }, false)} /> Intestazioni: titolo del libro sulle pagine pari, capitolo sulle dispari</label>
-            <label className="flex items-center gap-2"><input type="checkbox" className="size-4 accent-[#8a6a2b]" checked={layout.bleed} onChange={(e) => setLayout({ bleed: e.target.checked })} /> Interno con abbondanza (solo se hai elementi al vivo)</label>
-            <label className="flex items-center gap-2"><input type="checkbox" className="size-4 accent-[#8a6a2b]" checked={layout.readerAiNotice} onChange={(e) => setLayout({ readerAiNotice: e.target.checked }, false)} /> Avviso al lettore sull’uso dell’IA nella pagina del copyright</label>
+            <label className="flex items-center gap-2"><input type="checkbox" className="size-4 accent-cyan" checked={layout.runningHeaders} onChange={(e) => setLayout({ runningHeaders: e.target.checked }, false)} /> Intestazioni: titolo del libro sulle pagine pari, capitolo sulle dispari</label>
+            <label className="flex items-center gap-2"><input type="checkbox" className="size-4 accent-cyan" checked={layout.bleed} onChange={(e) => setLayout({ bleed: e.target.checked })} /> Interno con abbondanza (solo se hai elementi al vivo)</label>
+            <label className="flex items-center gap-2"><input type="checkbox" className="size-4 accent-cyan" checked={layout.readerAiNotice} onChange={(e) => setLayout({ readerAiNotice: e.target.checked }, false)} /> Avviso al lettore sull’uso dell’IA nella pagina del copyright</label>
           </div>
         </div>
         <p className="mt-3 text-sm text-slate2">Margini a specchio con gabbia adeguata al numero di pagine, capitoli sempre su pagina destra, numerazione, indice con i numeri di pagina reali, riquadri e tabelle. Font incorporati nel PDF.</p>

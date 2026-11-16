@@ -12,6 +12,7 @@ import type { DataStore } from './types';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 export const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON);
+const ACCESS_KEY = 'folyntra.access-code';
 
 interface AppContext {
   store: DataStore | null;
@@ -21,6 +22,9 @@ interface AppContext {
   authReady: boolean;
   status: ServerStatus | null;
   getToken(): Promise<string | null>;
+  /** Modalità senza Supabase: verifica e ricorda il codice di accesso del server. Restituisce false se errato. */
+  unlock(code: string): Promise<boolean>;
+  lock(): void;
   signIn(email: string, password: string): Promise<string | null>;
   signUp(email: string, password: string): Promise<string | null>;
   signOut(): Promise<void>;
@@ -48,10 +52,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [status, setStatus] = useState<ServerStatus | null>(null);
+  const accessCode = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    fetchStatus().then((s) => active && setStatus(s)).catch(() => undefined);
+    try {
+      accessCode.current = window.localStorage.getItem(ACCESS_KEY);
+    } catch {
+      accessCode.current = null; // storage bloccato: il codice andrà reinserito a ogni visita
+    }
+    fetchStatus(accessCode.current).then((s) => active && setStatus(s)).catch(() => undefined);
     if (!SUPABASE_ENABLED) {
       queueMicrotask(() => {
         if (!active) return;
@@ -74,8 +84,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getToken = useCallback(async () => {
-    if (!SUPABASE_ENABLED) return null;
+    if (!SUPABASE_ENABLED) return accessCode.current;
     return (await supabase().auth.getSession()).data.session?.access_token ?? null;
+  }, []);
+  const unlock = useCallback(async (code: string) => {
+    const s = await fetchStatus(code.trim());
+    setStatus(s);
+    if (!s.access.valid) return false;
+    accessCode.current = code.trim();
+    try {
+      window.localStorage.setItem(ACCESS_KEY, code.trim());
+    } catch {
+      /* non persistente: va bene */
+    }
+    return true;
+  }, []);
+  const lock = useCallback(() => {
+    accessCode.current = null;
+    try {
+      window.localStorage.removeItem(ACCESS_KEY);
+    } catch {
+      /* niente da fare */
+    }
+    fetchStatus(null).then(setStatus).catch(() => undefined);
   }, []);
   const signIn = useCallback(async (email: string, password: string) => (await supabase().auth.signInWithPassword({ email, password })).error?.message ?? null, []);
   const signUp = useCallback(async (email: string, password: string) => (await supabase().auth.signUp({ email, password })).error?.message ?? null, []);
@@ -84,8 +115,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AppContext>(
-    () => ({ store, mode: SUPABASE_ENABLED ? 'supabase' : 'locale', userEmail, authReady, status, getToken, signIn, signUp, signOut }),
-    [store, userEmail, authReady, status, getToken, signIn, signUp, signOut],
+    () => ({ store, mode: SUPABASE_ENABLED ? 'supabase' : 'locale', userEmail, authReady, status, getToken, unlock, lock, signIn, signUp, signOut }),
+    [store, userEmail, authReady, status, getToken, unlock, lock, signIn, signUp, signOut],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

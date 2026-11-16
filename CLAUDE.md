@@ -16,7 +16,7 @@ Sei incaricato di costruire, testare e mantenere un prodotto reale in questo rep
 
 ## Comandi e struttura (aggiornato alla Fase A)
 
-- Verifica completa: `npm run typecheck && npm run lint && npm test && npm run build`; poi `npm start` e `npm run e2e` (richiede Chrome/Chromium, `CHROMIUM_EXECUTABLE_PATH` se non è in un percorso standard).
+- Verifica completa: `npm run typecheck && npm run lint && npm test && npm run build`; poi `npm start` e `npm run e2e` (demo completo + accesso; richiede Chrome/Chromium, `CHROMIUM_EXECUTABLE_PATH` se non è in un percorso standard). Il logo ufficiale è in `brand/`: non ridisegnarlo, rigenera le risorse con `npm run icons`.
 - Logica pura in `src/lib` (niche, kdp, ai, book, export, store); pagine in `src/app/(app)`; schede del progetto in `src/components/project`.
 - Il mock AI deve restare dichiarato: il testo che produce contiene il marcatore `TESTO DEMO (mock)` e il QA lo tratta come blocco critico.
 - Dopo ogni fase aggiornare `README.md` e `REPORT-STATO.md` con ciò che è stato davvero eseguito.

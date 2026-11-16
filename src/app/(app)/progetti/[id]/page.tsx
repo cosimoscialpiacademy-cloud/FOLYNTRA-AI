@@ -66,7 +66,7 @@ function Workspace({ initial }: { initial: Project }) {
       <div className="mb-4">
         <Link href="/progetti" className="inline-flex items-center gap-1 text-sm text-slate2 hover:text-ink"><ArrowLeft className="size-3.5" aria-hidden /> Progetti</Link>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-2">
-          <h1 className="min-w-0 font-serif text-2xl font-bold text-midnight sm:text-3xl">{project.title}</h1>
+          <h1 className="min-w-0 font-display text-2xl font-bold text-ink sm:text-3xl">{project.title}</h1>
           <span className="text-xs text-slate2" aria-live="polite">{dirty ? 'Salvataggio…' : 'Tutte le modifiche sono salvate'}</span>
         </div>
         <div className="mt-2 flex items-center gap-3">
@@ -79,21 +79,21 @@ function Workspace({ initial }: { initial: Project }) {
         <div className="flex min-w-max gap-1">
           {steps.map((s, i) => (
             <button key={s.key} role="tab" aria-selected={tab === s.key} onClick={() => goTo(s.key)}
-              className={cn('flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors', tab === s.key ? 'border-gold text-midnight' : 'border-transparent text-slate2 hover:text-ink')}>
-              <span className={cn('grid size-5 place-items-center rounded-full text-[11px] font-bold', s.ratio >= 1 ? 'bg-ok text-white' : tab === s.key ? 'bg-midnight text-ivory' : 'bg-black/10 text-ink')}>
+              className={cn('flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors', tab === s.key ? 'border-cyan text-ink' : 'border-transparent text-slate2 hover:text-ink')}>
+              <span className={cn('grid size-5 place-items-center rounded-full text-[11px] font-bold', s.ratio >= 1 ? 'bg-ok text-onbrand' : tab === s.key ? 'bg-cyan text-onbrand' : 'bg-white/10 text-ink')}>
                 {s.ratio >= 1 ? <Check className="size-3" aria-hidden /> : i + 1}
               </span>
               {s.label}
             </button>
           ))}
           <button role="tab" aria-selected={tab === 'vendite'} onClick={() => goTo('vendite')}
-            className={cn('flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors', tab === 'vendite' ? 'border-gold text-midnight' : 'border-transparent text-slate2 hover:text-ink')}>
+            className={cn('flex min-h-12 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors', tab === 'vendite' ? 'border-cyan text-ink' : 'border-transparent text-slate2 hover:text-ink')}>
             Ads &amp; Royalties
           </button>
         </div>
       </div>
 
-      {recovered > 0 && <p className="mb-4 rounded-lg border border-warn/30 bg-warn/5 px-3 py-2 text-sm text-[#6b4500]">{recovered} generazione interrotta è stata recuperata: il testo parziale è salvato, puoi riprendere dalla scheda Scrittura.</p>}
+      {recovered > 0 && <p className="mb-4 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn">{recovered} generazione interrotta è stata recuperata: il testo parziale è salvato, puoi riprendere dalla scheda Scrittura.</p>}
 
       <div role="tabpanel">
         {tab === 'brief' && <BriefTab {...props} />}
@@ -118,6 +118,6 @@ export default function ProjectPage() {
   }, [store, id]);
 
   if (!state.loaded) return <p className="text-sm text-slate2">Caricamento…</p>;
-  if (!state.project) return <Empty title="Progetto non trovato">Potrebbe essere stato eliminato o appartenere a un altro dispositivo. <Link href="/progetti" className="font-medium text-golddeep underline">Torna ai progetti</Link>.</Empty>;
+  if (!state.project) return <Empty title="Progetto non trovato">Potrebbe essere stato eliminato o appartenere a un altro dispositivo. <Link href="/progetti" className="font-medium text-cyan underline">Torna ai progetti</Link>.</Empty>;
   return <Workspace key={state.project.id} initial={state.project} />;
 }

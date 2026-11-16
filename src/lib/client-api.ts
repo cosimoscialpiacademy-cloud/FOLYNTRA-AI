@@ -3,6 +3,7 @@ import type { AiEvent, AiRequest } from './ai/schemas';
 import type { BookBundle } from './types';
 
 export interface ServerStatus {
+  access: { required: boolean; valid: boolean };
   ai: { mode: 'anthropic' | 'mock'; model: string; reason: string; maxUsdPerBook: number };
   supabase: boolean;
   renderer: boolean;
@@ -88,8 +89,8 @@ export async function callExport(format: 'kit' | 'interior', bundle: BookBundle,
   };
 }
 
-export async function fetchStatus(): Promise<ServerStatus> {
-  const res = await fetch('/api/status', { cache: 'no-store' });
+export async function fetchStatus(token: string | null = null): Promise<ServerStatus> {
+  const res = await fetch('/api/status', { cache: 'no-store', headers: authHeaders(token) });
   if (!res.ok) throw new Error('Stato del server non disponibile');
   return (await res.json()) as ServerStatus;
 }

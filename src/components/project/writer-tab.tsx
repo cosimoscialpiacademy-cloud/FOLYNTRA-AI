@@ -48,7 +48,7 @@ function Editor({ chapter, onSaved }: { chapter: Chapter; onSaved: () => void })
         <Button variant="outline" size="sm" onClick={() => setPreview((p) => !p)}>{preview ? <><Pencil className="size-4" aria-hidden /> Modifica</> : <><Eye className="size-4" aria-hidden /> Anteprima</>}</Button>
       </div>
       {preview ? (
-        <div className="prose-book min-h-80 rounded-lg border border-line bg-white p-4 sm:p-6" dangerouslySetInnerHTML={{ __html: html || '<p><em>Nessun testo.</em></p>' }} />
+        <div className="prose-book min-h-80 rounded-lg border border-line bg-card p-4 sm:p-6" dangerouslySetInnerHTML={{ __html: html || '<p><em>Nessun testo.</em></p>' }} />
       ) : (
         <Textarea aria-label={`Testo del capitolo ${chapter.title}`} className="min-h-[28rem] font-mono text-sm" disabled={locked} value={text} onChange={(e) => setText(e.target.value)}
           placeholder={'Scrivi qui in Markdown oppure genera il capitolo.\n\n## Sottosezione\nTesto…\n\n> **Nota:** riquadro di approfondimento\n\n| Colonna | Colonna |\n|---|---|\n| … | … |'} />
@@ -157,7 +157,7 @@ export function WriterTab({ project, chapters, niche, update, goTo }: TabProps) 
     }
   }
 
-  if (!chapters.length) return <Empty title="Nessun capitolo">Crea prima l’indice. <button className="font-medium text-golddeep underline" onClick={() => goTo('indice')}>Vai all’indice</button></Empty>;
+  if (!chapters.length) return <Empty title="Nessun capitolo">Crea prima l’indice. <button className="font-medium text-cyan underline" onClick={() => goTo('indice')}>Vai all’indice</button></Empty>;
 
   const mock = status?.ai.mode === 'mock';
   return (
@@ -165,11 +165,11 @@ export function WriterTab({ project, chapters, niche, update, goTo }: TabProps) 
       <Card>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="font-serif text-lg font-bold text-midnight">Scrittura capitolo per capitolo</h2>
+            <h2 className="font-display text-lg font-bold text-ink">Scrittura capitolo per capitolo</h2>
             <p className="mt-1 text-sm text-slate2">Un job separato per capitolo, con salvataggio progressivo: se chiudi la pagina riprendi da dove eri. La stessa richiesta non crea duplicati.</p>
           </div>
           <div className="text-right text-sm">
-            <p className="font-semibold text-midnight">{formatMoney(spent, 'USD')} <span className="font-normal text-slate2">spesi su {formatMoney(Math.min(project.budgetUsd, status?.ai.maxUsdPerBook ?? project.budgetUsd), 'USD')}</span></p>
+            <p className="font-semibold text-ink">{formatMoney(spent, 'USD')} <span className="font-normal text-slate2">spesi su {formatMoney(Math.min(project.budgetUsd, status?.ai.maxUsdPerBook ?? project.budgetUsd), 'USD')}</span></p>
             <p className="text-xs text-slate2">{costs.data.reduce((n, c) => n + c.inputTokens, 0).toLocaleString('it-IT')} token in · {costs.data.reduce((n, c) => n + c.outputTokens, 0).toLocaleString('it-IT')} token out</p>
           </div>
         </div>
@@ -199,8 +199,8 @@ export function WriterTab({ project, chapters, niche, update, goTo }: TabProps) 
             {chapters.map((c) => (
               <li key={c.id} className="shrink-0 lg:shrink">
                 <button onClick={() => setActiveId(c.id)} aria-current={active?.id === c.id ? 'true' : undefined}
-                  className={cn('w-56 rounded-lg border px-3 py-2 text-left transition-colors lg:w-full', active?.id === c.id ? 'border-gold bg-white shadow-sm' : 'border-line bg-white/60 hover:bg-white')}>
-                  <p className="truncate text-sm font-medium text-midnight">{c.position}. {c.title}</p>
+                  className={cn('w-56 rounded-lg border px-3 py-2 text-left transition-colors lg:w-full', active?.id === c.id ? 'border-cyan bg-card shadow-sm' : 'border-line bg-card/60 hover:bg-card')}>
+                  <p className="truncate text-sm font-medium text-ink">{c.position}. {c.title}</p>
                   <div className="mt-1 flex items-center justify-between gap-2">
                     <Badge tone={STATUS[c.status].tone}>{STATUS[c.status].label}</Badge>
                     <span className="text-xs text-slate2">{wordCount(c.content).toLocaleString('it-IT')} par.</span>
@@ -216,7 +216,7 @@ export function WriterTab({ project, chapters, niche, update, goTo }: TabProps) 
             <Card>
               <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <h3 className="font-serif text-xl font-bold text-midnight">{active.position}. {active.title}</h3>
+                  <h3 className="font-display text-xl font-bold text-ink">{active.position}. {active.title}</h3>
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     <Badge tone={STATUS[active.status].tone}>{STATUS[active.status].label}</Badge>
                     {active.generatedBy === 'mock' && <Badge tone="demo">TESTO DEMO (mock)</Badge>}
@@ -234,7 +234,7 @@ export function WriterTab({ project, chapters, niche, update, goTo }: TabProps) 
               {active.status === 'generating' ? (
                 <div>
                   <p className="mb-2 text-sm text-warn">Scrittura in corso: il testo si aggiorna e viene salvato man mano.</p>
-                  <div className="prose-book max-h-[28rem] min-h-40 overflow-y-auto rounded-lg border border-line bg-white p-4" dangerouslySetInnerHTML={{ __html: markdownToXhtml(active.content) || '<p><em>In attesa del primo testo…</em></p>' }} />
+                  <div className="prose-book max-h-[28rem] min-h-40 overflow-y-auto rounded-lg border border-line bg-card p-4" dangerouslySetInnerHTML={{ __html: markdownToXhtml(active.content) || '<p><em>In attesa del primo testo…</em></p>' }} />
                 </div>
               ) : (
                 <Editor key={`${active.id}:${nonce}:${active.status === 'locked'}`} chapter={active} onSaved={noop} />
@@ -276,7 +276,7 @@ export function WriterTab({ project, chapters, niche, update, goTo }: TabProps) 
                 <p className="mt-3 text-xs text-slate2">Segnaposto, fonti mancanti, duplicati, coerenza con l’indice{project.kind === 'cookbook' ? ', ingredienti delle ricette' : ''}. Sono euristiche locali: non certificano originalità né correttezza dei fatti.</p>
                 {review?.chapterId === active.id && (
                   <div className="mt-4 border-t border-line pt-3">
-                    <p className="text-sm font-semibold text-midnight">Revisione AI {review.provider === 'mock' && <Badge tone="warn">mock</Badge>}</p>
+                    <p className="text-sm font-semibold text-ink">Revisione AI {review.provider === 'mock' && <Badge tone="warn">mock</Badge>}</p>
                     <p className="mt-1 text-sm text-ink">{review.data.summary}</p>
                     <ul className="mt-2 space-y-2">
                       {review.data.issues.map((i, n) => (

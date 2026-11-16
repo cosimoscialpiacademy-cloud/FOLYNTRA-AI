@@ -28,11 +28,11 @@ export default function ProjectsPage() {
   const sorted = [...projects.data].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
     <>
-      <PageHeader title="Progetti" subtitle="Ogni libro nasce da una nicchia valutata." action={<Link href="/nicchie" className="inline-flex min-h-11 items-center rounded-lg bg-midnight px-4 text-sm font-medium text-ivory hover:bg-ink">Nuovo libro da una nicchia</Link>} />
+      <PageHeader title="Progetti" subtitle="Ogni libro nasce da una nicchia valutata." action={<Link href="/nicchie" className="inline-flex min-h-11 items-center rounded-lg bg-midnight px-4 text-sm font-medium text-ink hover:bg-ink">Nuovo libro da una nicchia</Link>} />
       {projects.loading ? (
         <p className="text-sm text-slate2">Caricamento…</p>
       ) : sorted.length === 0 ? (
-        <Empty title="Nessun progetto">Apri <Link href="/nicchie" className="font-medium text-golddeep underline">Scopri nicchie</Link> e crea il primo libro.</Empty>
+        <Empty title="Nessun progetto">Apri <Link href="/nicchie" className="font-medium text-cyan underline">Scopri nicchie</Link> e crea il primo libro.</Empty>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {sorted.map((p) => {
@@ -41,7 +41,7 @@ export default function ProjectsPage() {
             return (
               <Card key={p.id} className="flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
-                  <Link href={`/progetti/${p.id}`} className="min-w-0 font-serif text-lg font-bold text-midnight hover:underline">{p.title}</Link>
+                  <Link href={`/progetti/${p.id}`} className="min-w-0 font-display text-lg font-bold text-ink hover:underline">{p.title}</Link>
                   <Badge tone="gold">{STATUS_LABEL[p.status]}</Badge>
                 </div>
                 <p className="text-xs text-slate2">{MARKETPLACES[p.marketplace].label} · aggiornato il {formatDate(p.updatedAt)}</p>

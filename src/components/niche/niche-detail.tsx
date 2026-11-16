@@ -20,11 +20,11 @@ export function ScoreDial({ score, size = 84 }: { score: number | null; size?: n
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} role="img" aria-label={score === null ? 'Punteggio non calcolabile' : `Opportunità ${score} su 100`}>
       <svg viewBox="0 0 80 80" className="size-full -rotate-90">
-        <circle cx="40" cy="40" r={r} fill="none" stroke="#e3ddd0" strokeWidth="7" />
-        {score !== null && <circle cx="40" cy="40" r={r} fill="none" stroke="#D7B574" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(score / 100) * c} ${c}`} />}
+        <circle cx="40" cy="40" r={r} fill="none" stroke="#22345a" strokeWidth="7" />
+        {score !== null && <circle cx="40" cy="40" r={r} fill="none" stroke="#00E5FF" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(score / 100) * c} ${c}`} />}
       </svg>
       <div className="absolute inset-0 grid place-items-center">
-        <span className="font-serif text-2xl font-bold text-midnight">{score ?? 'n/d'}</span>
+        <span className="font-display text-2xl font-bold text-ink">{score ?? 'n/d'}</span>
       </div>
     </div>
   );
@@ -117,7 +117,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
           <ScoreDial score={ev.score} />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-serif text-xl font-bold text-midnight">{draft.keyword}</h2>
+              <h2 className="font-display text-xl font-bold text-ink">{draft.keyword}</h2>
               {draft.demoOnly && <Badge tone="demo">DEMO</Badge>}
               {draft.status === 'hypothesis' && <Badge tone="warn">IPOTESI</Badge>}
               {draft.status === 'selected' && <Badge tone="ok">Selezionata</Badge>}
@@ -158,7 +158,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
             return (
               <div key={s.key} className="rounded-lg border border-line p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-medium text-midnight">{s.label} <span className="text-xs font-normal text-slate2">peso {Math.round(s.weight * 100)}%{s.inverted ? ' · invertito' : ''}</span></p>
+                  <p className="font-medium text-ink">{s.label} <span className="text-xs font-normal text-slate2">peso {Math.round(s.weight * 100)}%{s.inverted ? ' · invertito' : ''}</span></p>
                   <Badge tone={metric.status === 'demo' ? 'demo' : metric.status === 'missing' ? 'bad' : metric.status === 'observed' ? 'ok' : 'gold'}>{STATUS_LABEL[metric.status]}</Badge>
                 </div>
                 <p className="mt-0.5 text-xs text-slate2">{s.help}</p>
@@ -224,7 +224,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
           <Field label="Pagine">{(id) => <Input id={id} inputMode="numeric" value={comp.pages} onChange={(e) => setComp({ ...comp, pages: e.target.value })} />}</Field>
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-[#8a6a2b]" checked={comp.verified} onChange={(e) => setComp({ ...comp, verified: e.target.checked })} /> L’ho verificato di persona sulla pagina prodotto</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-cyan" checked={comp.verified} onChange={(e) => setComp({ ...comp, verified: e.target.checked })} /> L’ho verificato di persona sulla pagina prodotto</label>
           <Button variant="outline" onClick={addCompetitor}><Plus className="size-4" aria-hidden /> Aggiungi concorrente</Button>
         </div>
       </Card>
@@ -264,7 +264,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
             return (
               <div key={label} className="rounded-lg border border-line p-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate2">{label} · {units} copie/mese</p>
-                <p className={`mt-1 font-serif text-xl font-bold ${r.netBeforeTax < 0 ? 'text-bad' : 'text-midnight'}`}>{formatMoney(r.netBeforeTax, m.currency)}</p>
+                <p className={`mt-1 font-display text-xl font-bold ${r.netBeforeTax < 0 ? 'text-bad' : 'text-ink'}`}>{formatMoney(r.netBeforeTax, m.currency)}</p>
                 <p className="text-xs text-slate2">ricavi {formatMoney(r.revenue, m.currency)} − costi {formatMoney(r.costs, m.currency)}, prima delle imposte</p>
               </div>
             );
@@ -272,7 +272,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
         </div>
       </Card>
 
-      <Card className="border-gold/60">
+      <Card className="border-cyan/60">
         <CardTitle>Crea il libro in questa nicchia</CardTitle>
         <p className="mb-3 text-sm text-slate2">Keyword, pubblico, differenziazione e categoria confluiscono automaticamente nel brief editoriale.</p>
         <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
@@ -280,7 +280,7 @@ export function NicheDetail({ niche, onDeleted }: { niche: Niche; onDeleted: () 
           <Button variant="gold" size="lg" disabled={!risk} loading={creating} onClick={() => void createBook()}>Crea il libro</Button>
         </div>
         <label className="mt-3 flex items-start gap-2 text-sm">
-          <input type="checkbox" className="mt-0.5 size-4 accent-[#8a6a2b]" checked={risk} onChange={(e) => setRisk(e.target.checked)} />
+          <input type="checkbox" className="mt-0.5 size-4 accent-cyan" checked={risk} onChange={(e) => setRisk(e.target.checked)} />
           <span>
             Accetto il rischio: lo score non garantisce vendite.
             {draft.demoOnly ? ' Questa nicchia usa dati DEMO senza alcun valore di mercato.' : ev.confidence < 50 ? ' L’affidabilità dei dati è bassa.' : ''}

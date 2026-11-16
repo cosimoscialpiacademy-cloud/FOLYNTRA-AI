@@ -14,7 +14,7 @@ function Row({ label, ok, children }: { label: string; ok: boolean | 'off'; chil
   return (
     <li className="flex flex-wrap items-start justify-between gap-2 py-3">
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-midnight">{label}</p>
+        <p className="font-medium text-ink">{label}</p>
         <p className="text-sm text-slate2">{children}</p>
       </div>
       {ok === 'off' ? <Badge>Non attivo</Badge> : ok ? <Badge tone="ok">Attivo</Badge> : <Badge tone="warn">Non configurato</Badge>}
@@ -73,7 +73,10 @@ export default function SettingsPage() {
           ) : (
             <ul className="divide-y divide-line">
               <Row label="AI Anthropic" ok={status.ai.mode === 'anthropic'}>
-                {status.ai.mode === 'anthropic' ? `Modello ${status.ai.model}. Tetto server ${status.ai.maxUsdPerBook} $ per libro.` : `Mock dichiarato attivo. ${status.ai.reason} Servono ANTHROPIC_API_KEY ed ENABLE_EXTERNAL_PAID_APIS=true.`}
+                {status.ai.mode === 'anthropic' ? `Modello ${status.ai.model}. Tetto server ${status.ai.maxUsdPerBook} $ per libro.` : `Mock dichiarato attivo. ${status.ai.reason} Servono ANTHROPIC_API_KEY, ENABLE_EXTERNAL_PAID_APIS=true e APP_ACCESS_CODE (o Supabase).`}
+              </Row>
+              <Row label="Protezione dell’accesso" ok={status.supabase || status.access.required}>
+                {status.supabase ? 'Login con Supabase: AI ed esportazione rispondono solo a utenti autenticati.' : status.access.required ? 'Codice di accesso attivo: AI ed esportazione rispondono solo a chi lo conosce. Dopo 8 tentativi errati l’IP resta bloccato 10 minuti.' : 'Nessuna protezione: va bene in locale. Su un link pubblico imposta APP_ACCESS_CODE (almeno 8 caratteri) prima di attivare l’AI reale.'}
               </Row>
               <Row label="Supabase (login e database)" ok={status.supabase}>
                 {status.supabase ? `Dati su Supabase con RLS per utente${userEmail ? ` (${userEmail})` : ''}.` : 'Non configurato: i dati restano in questo browser (IndexedDB). Servono NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY e lo schema supabase-schema.sql.'}

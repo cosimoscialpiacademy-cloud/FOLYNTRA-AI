@@ -78,13 +78,38 @@ Le route server sono di solo calcolo: i dati restano nell'archivio dell'utente. 
 
 Font EB Garamond, Playfair Display, Inter e Oswald: SIL Open Font License 1.1 (pacchetti `@fontsource`). Le copertine sono grafica vettoriale generata dal codice, senza immagini di terzi.
 
-## Pubblicazione su Railway (preparata, NON ancora provata)
+## Identità visiva
+
+Il logo ufficiale è in `brand/logo-ufficiale.png` (trasparente) con la tavola di identità in `brand/tavola-identita-visiva.png`.
+`npm run icons` ricava da lì emblema, icone PWA/iOS e favicon **senza ridisegnare il logo**. Palette: Blu profondo `#081220`, Ciano `#00E5FF`, Viola `#885CF6`, Ambra `#FFB020`, Ardesia `#334155`, Bianco nuvola `#F5F7FA`. Font: Montserrat (titoli) e Inter (testi), licenza OFL.
+Scelta editoriale: lo slogan della tavola «…e genera profitto con l'AI» NON è usato nell'app né nella landing, perché promette un guadagno che nessuno può garantire (vedi CLAUDE.md).
+
+## Protezione dell'accesso (obbligatoria su un link pubblico)
+
+Senza Supabase il server non sa chi chiama. Per questo l'AI reale resta **spenta** finché non è impostato `APP_ACCESS_CODE` (almeno 8 caratteri): da quel momento AI ed esportazione rispondono solo a chi invia il codice (confronto a tempo costante; dopo 8 tentativi errati l'IP è bloccato 10 minuti). Il codice si digita una volta e resta nel browser di quel dispositivo; «Blocca» lo cancella.
+I libri restano nel browser (IndexedDB): usa il backup in Impostazioni.
+
+## Primo libro VERO (con AI reale)
+
+Variabili da impostare sul server (Railway → servizio → Variables), mai in chat o nel repository:
+
+| Variabile | Valore | Perché |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | la tua chiave Anthropic | la usa solo il server |
+| `ENABLE_EXTERNAL_PAID_APIS` | `true` | autorizzazione esplicita alla spesa |
+| `APP_ACCESS_CODE` | un codice lungo scelto da te (≥ 8) | protegge il link pubblico |
+| `MAX_AI_SPEND_CENTS_PER_BOOK` | facoltativa, default `2000` (20 $) | tetto di spesa per libro imposto dal server |
+| `ANTHROPIC_MODEL` | facoltativa, default `claude-opus-5-5` | un modello più economico riduce il costo |
+
+Poi: nicchia → brief → indice → scrittura → **rivedi ogni capitolo** → Cover & interni → KDP Kit. Il kit diventa «pronto» solo se passano i controlli critici (testo reale, revisione umana confermata, diritti, dichiarazione IA, ≥ 24 pagine, ecc.).
+
+## Pubblicazione su Railway
 
 File: `Dockerfile` (Node 22 + Chromium), `railway.json` (healthcheck `/api/status`), `.dockerignore`.
-Non verificato: l'ambiente di sviluppo non ha un motore Docker, quindi la build dell'immagine non è stata eseguita.
+Stato: la build su Railway è **riuscita** e l'app è partita («Ready»). Railway assegna la porta (8080): il dominio pubblico deve puntare a quella porta, non a 3000. Il Dockerfile ascolta `$PORT`.
+Non ancora verificato dal vivo su Railway: la generazione del PDF con Chromium nel container (da provare al primo export).
 
-1. Crea un account su railway.com e un progetto «Deploy from GitHub repo» con questo repository (branch indicato).
-2. Variabili d'ambiente (mai nel repository): al primo test nessuna; l'app parte in modalità DEMO con AI mock.
-   Per l'AI reale servono `ANTHROPIC_API_KEY`, `ENABLE_EXTERNAL_PAID_APIS=true` e un login (Supabase) oppure `ALLOW_UNAUTHENTICATED_AI=true` solo su un link privato.
-3. In Settings → Networking → «Generate Domain»: è l'indirizzo da aprire dal telefono.
-4. Costi: Railway è a consumo (indicativamente pochi dollari al mese): controlla il piano sul loro sito.
+1. Progetto Railway da questo repository, branch di sviluppo (vedi sotto).
+2. In Settings → Networking: «Generate Domain» con la porta indicata dai log (`Local: http://localhost:<porta>`).
+3. Le variabili della tabella sopra. Costi: Railway è a consumo; controlla il piano sul loro sito.
+4. Ogni push sul branch ridistribuisce da solo.

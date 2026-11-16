@@ -136,8 +136,8 @@ export default function NichesPage() {
             <Button variant="outline" onClick={() => void loadDemo()}><FlaskConical className="size-4" aria-hidden /> Carica nicchie DEMO</Button>
           </div>
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            <button className="inline-flex items-center gap-1 font-medium text-golddeep hover:underline" onClick={() => downloadBlob(new Blob([CSV_TEMPLATE_SIGNALS], { type: 'text/csv' }), 'modello-segnali.csv')}><Download className="size-3.5" aria-hidden /> Modello CSV segnali</button>
-            <button className="inline-flex items-center gap-1 font-medium text-golddeep hover:underline" onClick={() => downloadBlob(new Blob([CSV_TEMPLATE_COMPETITORS], { type: 'text/csv' }), 'modello-concorrenti.csv')}><Download className="size-3.5" aria-hidden /> Modello CSV concorrenti</button>
+            <button className="inline-flex items-center gap-1 font-medium text-cyan hover:underline" onClick={() => downloadBlob(new Blob([CSV_TEMPLATE_SIGNALS], { type: 'text/csv' }), 'modello-segnali.csv')}><Download className="size-3.5" aria-hidden /> Modello CSV segnali</button>
+            <button className="inline-flex items-center gap-1 font-medium text-cyan hover:underline" onClick={() => downloadBlob(new Blob([CSV_TEMPLATE_COMPETITORS], { type: 'text/csv' }), 'modello-concorrenti.csv')}><Download className="size-3.5" aria-hidden /> Modello CSV concorrenti</button>
           </div>
           <ul className="mt-3 space-y-1 text-xs text-slate2">
             <li>• Keepa: {status?.providers.keepa ? 'chiave presente, adapter previsto in Fase B (non ancora attivo).' : 'non configurato (Fase B, richiede abbonamento).'}</li>
@@ -184,20 +184,20 @@ export default function NichesPage() {
                 {sorted.map((n) => {
                   const ev = evaluateNiche(n);
                   return (
-                    <tr key={n.id} className={n.id === selectedId ? 'bg-gold/10' : undefined}>
+                    <tr key={n.id} className={n.id === selectedId ? 'bg-cyan/10' : undefined}>
                       <td className="px-1 py-2">
-                        <input type="checkbox" className="size-4 accent-[#8a6a2b]" aria-label={`Confronta ${n.keyword}`} checked={compare.includes(n.id)} disabled={!compare.includes(n.id) && compare.length >= 3}
+                        <input type="checkbox" className="size-4 accent-cyan" aria-label={`Confronta ${n.keyword}`} checked={compare.includes(n.id)} disabled={!compare.includes(n.id) && compare.length >= 3}
                           onChange={(e) => setCompare((c) => (e.target.checked ? [...c, n.id] : c.filter((x) => x !== n.id)))} />
                       </td>
                       <td className="px-1">
-                        <button className="text-left font-medium text-midnight hover:underline" onClick={() => open(n.id)}>{n.keyword}</button>
+                        <button className="text-left font-medium text-ink hover:underline" onClick={() => open(n.id)}>{n.keyword}</button>
                         <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
                           {n.demoOnly && <Badge tone="demo">DEMO</Badge>}
                           {n.status === 'hypothesis' && <Badge tone="warn">IPOTESI</Badge>}
                           {n.status === 'selected' && <Badge tone="ok">Selezionata</Badge>}
                         </span>
                       </td>
-                      <td className="px-1 font-serif text-lg font-bold text-midnight">{ev.score ?? <span className="font-sans text-xs font-normal text-slate2">dato non disponibile</span>}</td>
+                      <td className="px-1 font-display text-lg font-bold text-ink">{ev.score ?? <span className="font-sans text-xs font-normal text-slate2">dato non disponibile</span>}</td>
                       <td className="px-1">{ev.confidence}%</td>
                       <td className="px-1">{ev.coverage}%</td>
                       <td className="px-1 text-xs text-slate2">{n.marketplace}</td>
@@ -216,7 +216,7 @@ export default function NichesPage() {
           <CardTitle>Confronto affiancato</CardTitle>
           <div className="-mx-1 overflow-x-auto">
             <table className="w-full min-w-[36rem] text-left text-sm">
-              <thead><tr><th className="w-40 px-1 py-2 text-xs uppercase tracking-wider text-slate2">Campo</th>{compared.map((n) => <th key={n.id} className="px-1 font-medium text-midnight">{n.keyword} {n.demoOnly && <Badge tone="demo">DEMO</Badge>}</th>)}</tr></thead>
+              <thead><tr><th className="w-40 px-1 py-2 text-xs uppercase tracking-wider text-slate2">Campo</th>{compared.map((n) => <th key={n.id} className="px-1 font-medium text-ink">{n.keyword} {n.demoOnly && <Badge tone="demo">DEMO</Badge>}</th>)}</tr></thead>
               <tbody className="divide-y divide-line">
                 {([
                   ['Chi compra', (n: Niche) => n.buyerPersona || 'n/d'],

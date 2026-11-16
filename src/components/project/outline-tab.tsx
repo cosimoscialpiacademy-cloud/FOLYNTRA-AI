@@ -34,14 +34,14 @@ function ChapterRow({ chapter, count, onMove, onDelete }: { chapter: Chapter; co
   }
 
   return (
-    <li className="rounded-xl border border-line bg-white p-3 sm:p-4" data-testid="chapter-row">
+    <li className="rounded-xl border border-line bg-card p-3 sm:p-4" data-testid="chapter-row">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-midnight text-sm font-bold text-ivory">{chapter.position}</span>
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-midnight text-sm font-bold text-ink">{chapter.position}</span>
         <Input aria-label={`Titolo capitolo ${chapter.position}`} className="min-w-0 flex-1 font-medium" disabled={locked} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" aria-label="Sposta su" disabled={chapter.position === 1} onClick={() => onMove(-1)}><ArrowUp className="size-4" aria-hidden /></Button>
           <Button variant="ghost" size="sm" aria-label="Sposta giù" disabled={chapter.position === count} onClick={() => onMove(1)}><ArrowDown className="size-4" aria-hidden /></Button>
-          <Button variant="ghost" size="sm" aria-label={locked ? 'Sblocca capitolo' : 'Blocca capitolo'} onClick={() => void toggleLock()}>{locked ? <Lock className="size-4 text-golddeep" aria-hidden /> : <LockOpen className="size-4" aria-hidden />}</Button>
+          <Button variant="ghost" size="sm" aria-label={locked ? 'Sblocca capitolo' : 'Blocca capitolo'} onClick={() => void toggleLock()}>{locked ? <Lock className="size-4 text-cyan" aria-hidden /> : <LockOpen className="size-4" aria-hidden />}</Button>
           <Button variant="ghost" size="sm" aria-label="Elimina capitolo" disabled={locked} onClick={onDelete}><Trash2 className="size-4" aria-hidden /></Button>
         </div>
       </div>

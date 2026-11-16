@@ -13,7 +13,7 @@ function Kpi({ label, value, note }: { label: string; value: string; note?: stri
   return (
     <Card className="animate-rise">
       <p className="text-xs font-semibold uppercase tracking-wider text-slate2">{label}</p>
-      <p className="mt-1 font-serif text-3xl font-bold text-midnight">{value}</p>
+      <p className="mt-1 font-display text-3xl font-bold text-ink">{value}</p>
       {note && <p className="mt-1 text-xs text-slate2">{note}</p>}
     </Card>
   );
@@ -62,7 +62,7 @@ export default function DashboardPage() {
             </>
           ) : (
             <>
-              <p className="mt-1 font-serif text-2xl font-bold text-midnight">{ad.spend.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</p>
+              <p className="mt-1 font-display text-2xl font-bold text-ink">{ad.spend.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</p>
               <p className="mt-1 text-xs text-slate2">Somma nella valuta dei report · ACOS {ad.acosPct === null ? 'n/d' : `${ad.acosPct}%`} · {ad.orders} ordini · {plans.data.filter((p) => p.reportRows.length).length} libri con report</p>
             </>
           )}
@@ -76,7 +76,7 @@ export default function DashboardPage() {
             </>
           ) : (
             <>
-              <p className="mt-1 font-serif text-2xl font-bold text-midnight">{royalties.byCurrency.map((c) => `${c.royalty.toLocaleString('it-IT', { minimumFractionDigits: 2 })} ${c.currency}`).join(' · ')}</p>
+              <p className="mt-1 font-display text-2xl font-bold text-ink">{royalties.byCurrency.map((c) => `${c.royalty.toLocaleString('it-IT', { minimumFractionDigits: 2 })} ${c.currency}`).join(' · ')}</p>
               <p className="mt-1 text-xs text-slate2">{royalties.units} copie dai report importati{royalties.byCurrency.length === 1 && adRows.length ? ` · dopo Ads: ${(royalties.byCurrency[0].royalty - ad.spend).toLocaleString('it-IT', { minimumFractionDigits: 2 })} ${royalties.byCurrency[0].currency}` : ''} · prima delle imposte</p>
             </>
           )}
@@ -85,11 +85,11 @@ export default function DashboardPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
         <Card>
-          <CardTitle action={<Link href="/nicchie" className="inline-flex items-center gap-1 text-sm font-medium text-golddeep hover:underline">Nuovo libro da una nicchia <ArrowRight className="size-3.5" aria-hidden /></Link>}>Progetti</CardTitle>
+          <CardTitle action={<Link href="/nicchie" className="inline-flex items-center gap-1 text-sm font-medium text-cyan hover:underline">Nuovo libro da una nicchia <ArrowRight className="size-3.5" aria-hidden /></Link>}>Progetti</CardTitle>
           {projects.loading ? (
             <p className="text-sm text-slate2">Caricamento…</p>
           ) : sorted.length === 0 ? (
-            <Empty title="Nessun progetto">Si parte sempre dalla ricerca: apri <Link href="/nicchie" className="font-medium text-golddeep underline">Scopri nicchie</Link>, valuta un’ipotesi e crea il libro da lì.</Empty>
+            <Empty title="Nessun progetto">Si parte sempre dalla ricerca: apri <Link href="/nicchie" className="font-medium text-cyan underline">Scopri nicchie</Link>, valuta un’ipotesi e crea il libro da lì.</Empty>
           ) : (
             <ul className="divide-y divide-line">
               {sorted.map((p) => {
@@ -99,7 +99,7 @@ export default function DashboardPage() {
                   <li key={p.id} className="py-3 first:pt-0 last:pb-0">
                     <Link href={`/progetti/${p.id}`} className="group block">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="min-w-0 font-medium text-midnight group-hover:underline">{p.title}</p>
+                        <p className="min-w-0 font-medium text-ink group-hover:underline">{p.title}</p>
                         <Badge tone="gold">{STATUS_LABEL[p.status]}</Badge>
                       </div>
                       <div className="mt-2 flex items-center gap-3">

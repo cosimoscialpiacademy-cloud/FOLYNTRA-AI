@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import '@fontsource/inter/400.css';
+import '@fontsource/montserrat/600.css';
+import '@fontsource/montserrat/700.css';
+import '@fontsource/montserrat/800.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
@@ -14,14 +17,14 @@ import './globals.css';
 import { Providers } from '@/components/providers';
 
 export const metadata: Metadata = {
-  title: { default: 'FOLYNTRA AI — Publishing Intelligence', template: '%s · FOLYNTRA AI' },
+  title: { default: 'FOLYNTRA AI — Intelligenza Editoriale', template: '%s · FOLYNTRA AI' },
   description: 'Dalla nicchia al pacchetto KDP: ricerca, scrittura assistita, copertina, impaginazione ed esportazione.',
   manifest: '/manifest.webmanifest',
-  icons: { icon: '/icon.svg', apple: '/icon-192.png' },
+  icons: { icon: '/favicon.png', apple: '/apple-touch-icon.png' },
   appleWebApp: { capable: true, title: 'FOLYNTRA AI', statusBarStyle: 'black-translucent' },
 };
 
-export const viewport: Viewport = { themeColor: '#0D1424', width: 'device-width', initialScale: 1 };
+export const viewport: Viewport = { themeColor: '#081220', width: 'device-width', initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

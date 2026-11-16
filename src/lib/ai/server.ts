@@ -22,6 +22,11 @@ export function supabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
+/** Codice di accesso condiviso (modalità senza Supabase): protegge AI ed esportazione su un link pubblico. */
+export function accessCodeConfigured(): boolean {
+  return (process.env.APP_ACCESS_CODE?.trim().length ?? 0) >= 8;
+}
+
 export function aiConfig(): AiConfig {
   const cents = Number(process.env.MAX_AI_SPEND_CENTS_PER_BOOK ?? '2000');
   const maxUsdPerBook = Number.isFinite(cents) && cents >= 0 ? cents / 100 : 20;
@@ -29,8 +34,8 @@ export function aiConfig(): AiConfig {
   const mock = (reason: string): AiConfig => ({ mode: 'mock', model: MOCK_MODEL, reason, maxUsdPerBook });
   if (!process.env.ANTHROPIC_API_KEY) return mock('ANTHROPIC_API_KEY non configurata.');
   if (process.env.ENABLE_EXTERNAL_PAID_APIS !== 'true') return mock('Chiave presente ma ENABLE_EXTERNAL_PAID_APIS non è "true": nessuna spesa autorizzata.');
-  if (!supabaseConfigured() && process.env.ALLOW_UNAUTHENTICATED_AI !== 'true') {
-    return mock('Senza Supabase le route non sono autenticate: imposta ALLOW_UNAUTHENTICATED_AI=true solo in ambiente privato.');
+  if (!supabaseConfigured() && !accessCodeConfigured() && process.env.ALLOW_UNAUTHENTICATED_AI !== 'true') {
+    return mock('Il server è pubblico e non protetto: imposta APP_ACCESS_CODE (almeno 8 caratteri) oppure configura Supabase (solo in ambiente privato: ALLOW_UNAUTHENTICATED_AI=true). Senza protezione chiunque conosca il link potrebbe usare la tua chiave.');
   }
   return { mode: 'anthropic', model, reason: '', maxUsdPerBook };
 }

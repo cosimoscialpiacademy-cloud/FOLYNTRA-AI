@@ -109,3 +109,23 @@ Un secondo test (`tests/export.test.ts`) esporta un libro con testo rivisto e co
 ## Prima azione per te
 
 Apri l'app in locale (`npm install`, poi `npm run dev`) e percorri il flusso demo. Poi dimmi quale delle tre verifiche mancanti vuoi sbloccare per prima: chiave Anthropic, progetto Supabase nuovo, oppure hosting.
+
+
+---
+
+## Aggiornamento — identità visiva, protezione accesso, deploy
+
+**Eseguito davvero (16/11/2026):**
+- `npm run typecheck`, `npm run lint`: nessun errore. `npm test`: **62/62** (nuovi: `tests/access.test.ts` 9, `tests/ai-anthropic.test.ts` 9).
+- `npm run build` ok. `npm run e2e`: demo completo **17/17** + `scripts/e2e-access.mjs` **8/8** (schermata di blocco, codice errato/giusto, 401 su `/api/ai` e `/api/export` senza codice, chiave solo lato server, nessun segreto nell'HTML, «Blocca»).
+- Grafica: logo ufficiale usato così com'è (ritagliato, non ridisegnato), palette e font della tavola applicati a tutta l'app; schermate controllate su desktop e iPhone 390 px senza scorrimento orizzontale.
+- Deploy su Railway: build Docker riuscita, container avviato, dominio generato.
+
+**Dimostrato solo contro un FINTO server compatibile Anthropic (nessuna chiave vera):** streaming dei capitoli, risposte strutturate, costi dai token, rifiuto del modello, troncamento `[DA COMPLETARE]`, chiave non valida (401), tetto di spesa che impedisce la chiamata, `ANTHROPIC_MODEL`.
+
+**NON verificato:**
+- Una chiamata reale ad Anthropic (nessuna chiave in questo ambiente): i parametri (`output_config.effort`, formato strutturato, nome modello) sono quelli dell'SDK ma l'accettazione dal servizio vero resta da provare.
+- Il PDF generato da Chromium dentro il container Railway; il sito Railway non è raggiungibile da questo ambiente (proxy), quindi l'ho controllato solo via log di build/avvio.
+- Supabase, epubcheck, report Amazon reali, tabella costi di stampa in EUR (come prima).
+
+**Scelte da conoscere:** lo slogan «genera profitto con l'AI» della tavola non è usato (promessa di guadagno); i valori «Ricavi stimati» della tavola sono solo stile, l'app mostra solo numeri reali.

@@ -71,14 +71,14 @@ function PlanEditor({ initial, currency, listPrice, royalty, royaltyKnown }: { i
         </div>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-lg border border-line p-3"><p className="text-xs font-semibold uppercase tracking-wider text-slate2">ACOS di pareggio</p><p className="mt-1 font-serif text-xl font-bold text-midnight">{pct(be.breakEvenAcosPct)}</p><p className="text-xs text-slate2">royalty {formatMoney(royalty, currency)} ÷ prezzo {formatMoney(listPrice, currency)}</p></div>
-          <div className="rounded-lg border border-line p-3"><p className="text-xs font-semibold uppercase tracking-wider text-slate2">CPC massimo sostenibile</p><p className="mt-1 font-serif text-xl font-bold text-midnight">{money(be.maxCpc, currency)}</p><p className="text-xs text-slate2">alla conversione ipotizzata del {plan.assumedCvrPct}%</p></div>
-          <div className="rounded-lg border border-line p-3"><p className="text-xs font-semibold uppercase tracking-wider text-slate2">Clic al giorno acquistabili</p><p className="mt-1 font-serif text-xl font-bold text-midnight">{be.clicksPerDay ?? nd}</p><p className="text-xs text-slate2">un clic non garantisce un acquisto</p></div>
+          <div className="rounded-lg border border-line p-3"><p className="text-xs font-semibold uppercase tracking-wider text-slate2">ACOS di pareggio</p><p className="mt-1 font-display text-xl font-bold text-ink">{pct(be.breakEvenAcosPct)}</p><p className="text-xs text-slate2">royalty {formatMoney(royalty, currency)} ÷ prezzo {formatMoney(listPrice, currency)}</p></div>
+          <div className="rounded-lg border border-line p-3"><p className="text-xs font-semibold uppercase tracking-wider text-slate2">CPC massimo sostenibile</p><p className="mt-1 font-display text-xl font-bold text-ink">{money(be.maxCpc, currency)}</p><p className="text-xs text-slate2">alla conversione ipotizzata del {plan.assumedCvrPct}%</p></div>
+          <div className="rounded-lg border border-line p-3"><p className="text-xs font-semibold uppercase tracking-wider text-slate2">Clic al giorno acquistabili</p><p className="mt-1 font-display text-xl font-bold text-ink">{be.clicksPerDay ?? nd}</p><p className="text-xs text-slate2">un clic non garantisce un acquisto</p></div>
         </div>
         {!royaltyKnown && <p className="mt-2 text-xs text-warn">Royalty calcolata su 150 pagine ipotetiche: genera il PDF interno per usare le pagine reali.</p>}
         {be.maxCpc !== null && plan.defaultBid > be.maxCpc && <Notice tone="warn" className="mt-3">L’offerta predefinita supera il CPC massimo sostenibile: con queste ipotesi ogni vendita da Ads sarebbe in perdita.</Notice>}
 
-        <h3 className="mt-5 text-sm font-semibold text-midnight">Gruppi di keyword ({kwCount})</h3>
+        <h3 className="mt-5 text-sm font-semibold text-ink">Gruppi di keyword ({kwCount})</h3>
         <ul className="mt-2 space-y-3">
           {plan.groups.map((g, i) => {
             const setG = (patch: Partial<typeof g>) => set({ groups: plan.groups.map((x, j) => (j === i ? { ...x, ...patch } : x)) });
@@ -113,7 +113,7 @@ function PlanEditor({ initial, currency, listPrice, royalty, royaltyKnown }: { i
         <div className="flex flex-wrap items-center gap-2">
           <input ref={fileRef} id="ads-report-file" type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => void onReport(e.target.files?.[0])} />
           <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload className="size-4" aria-hidden /> Importa report Ads (CSV)</Button>
-          <button className="inline-flex items-center gap-1 text-sm font-medium text-golddeep hover:underline" onClick={() => downloadBlob(new Blob([ADS_TEMPLATE], { type: 'text/csv' }), 'modello-report-ads.csv')}><Download className="size-3.5" aria-hidden /> Modello colonne</button>
+          <button className="inline-flex items-center gap-1 text-sm font-medium text-cyan hover:underline" onClick={() => downloadBlob(new Blob([ADS_TEMPLATE], { type: 'text/csv' }), 'modello-report-ads.csv')}><Download className="size-3.5" aria-hidden /> Modello colonne</button>
           {plan.reportRows.length > 0 && <Button variant="ghost" size="sm" onClick={() => set({ reportRows: [], reportFileName: null, reportImportedAt: null })}>Rimuovi report</Button>}
         </div>
         <Issues errors={errors} />
@@ -124,15 +124,15 @@ function PlanEditor({ initial, currency, listPrice, royalty, royaltyKnown }: { i
             <p className="text-xs text-slate2">Fonte: {plan.reportFileName} · importato il {formatDate(plan.reportImportedAt)} · {plan.reportRows.length} righe</p>
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {([['Spesa', money(t.spend, currency)], ['Vendite attribuite', money(t.sales, currency)], ['ACOS', pct(t.acosPct)], ['ROAS', t.roas === null ? nd : t.roas.toLocaleString('it-IT')], ['Impressioni', t.impressions.toLocaleString('it-IT')], ['Clic', t.clicks.toLocaleString('it-IT')], ['CPC medio', money(t.cpc, currency)], ['Ordini', t.orders.toLocaleString('it-IT')]] as const).map(([l, v]) => (
-                <div key={l} className="rounded-lg border border-line p-3"><p className="text-xs font-semibold uppercase tracking-wider text-slate2">{l}</p><p className="mt-1 font-serif text-lg font-bold text-midnight">{v}</p></div>
+                <div key={l} className="rounded-lg border border-line p-3"><p className="text-xs font-semibold uppercase tracking-wider text-slate2">{l}</p><p className="mt-1 font-display text-lg font-bold text-ink">{v}</p></div>
               ))}
             </div>
             <Notice tone={margin.margin < 0 ? 'bad' : 'ok'} className="mt-3">
               Margine stimato dalle Ads: <strong>{formatMoney(margin.margin, currency)}</strong> = {t.orders} ordini × royalty stimata {formatMoney(royalty, currency)} ({formatMoney(margin.estimatedRoyalties, currency)}) − spesa {formatMoney(t.spend, currency)}.
               {be.breakEvenAcosPct !== null && t.acosPct !== null && ` ACOS ${t.acosPct}% contro pareggio ${be.breakEvenAcosPct}%.`} Le “vendite attribuite” sono a prezzo di listino, non royalty.
             </Notice>
-            <div className="mt-3 flex gap-1 rounded-lg bg-black/5 p-1 sm:w-80" role="group" aria-label="Raggruppa per">
-              {(['campaign', 'target'] as const).map((k) => <button key={k} aria-pressed={by === k} onClick={() => setBy(k)} className={`min-h-9 flex-1 rounded-md px-2 text-sm font-medium ${by === k ? 'bg-white text-midnight shadow-sm' : 'text-slate2'}`}>{k === 'campaign' ? 'Per campagna' : 'Per keyword / target'}</button>)}
+            <div className="mt-3 flex gap-1 rounded-lg bg-white/5 p-1 sm:w-80" role="group" aria-label="Raggruppa per">
+              {(['campaign', 'target'] as const).map((k) => <button key={k} aria-pressed={by === k} onClick={() => setBy(k)} className={`min-h-9 flex-1 rounded-md px-2 text-sm font-medium ${by === k ? 'bg-card text-ink shadow-sm' : 'text-slate2'}`}>{k === 'campaign' ? 'Per campagna' : 'Per keyword / target'}</button>)}
             </div>
             <div className="-mx-1 mt-2 overflow-x-auto">
               <table className="w-full min-w-[34rem] text-left text-sm">
@@ -209,7 +209,7 @@ export function SalesTab({ project, niche }: TabProps) {
         <div className="flex flex-wrap items-center gap-2">
           <input ref={fileRef} id="royalties-file" type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => void onRoyalties(e.target.files?.[0])} />
           <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload className="size-4" aria-hidden /> Importa royalties (CSV)</Button>
-          <button className="inline-flex items-center gap-1 text-sm font-medium text-golddeep hover:underline" onClick={() => downloadBlob(new Blob([KDP_TEMPLATE], { type: 'text/csv' }), 'modello-royalties.csv')}><Download className="size-3.5" aria-hidden /> Modello colonne</button>
+          <button className="inline-flex items-center gap-1 text-sm font-medium text-cyan hover:underline" onClick={() => downloadBlob(new Blob([KDP_TEMPLATE], { type: 'text/csv' }), 'modello-royalties.csv')}><Download className="size-3.5" aria-hidden /> Modello colonne</button>
           {sales.data.length > 0 && <Button variant="ghost" size="sm" onClick={() => void clearSales()}>Elimina righe importate</Button>}
         </div>
         <p className="mt-2 text-xs text-slate2">KDP esporta i report in Excel: salva il foglio delle royalties come CSV e caricalo. Ogni import aggiunge righe: non caricare due volte lo stesso periodo.</p>
@@ -225,7 +225,7 @@ export function SalesTab({ project, niche }: TabProps) {
                 return (
                   <div key={c.currency} className="rounded-lg border border-line p-3">
                     <p className="text-xs font-semibold uppercase tracking-wider text-slate2">Royalties reali · {c.currency}</p>
-                    <p className="mt-1 font-serif text-xl font-bold text-midnight">{c.royalty.toLocaleString('it-IT', { minimumFractionDigits: 2 })} {c.currency}</p>
+                    <p className="mt-1 font-display text-xl font-bold text-ink">{c.royalty.toLocaleString('it-IT', { minimumFractionDigits: 2 })} {c.currency}</p>
                     <p className="text-xs text-slate2">{c.units} copie{sameCurrency && plan?.reportRows.length ? ` · dopo Ads: ${(c.royalty - adSpend).toLocaleString('it-IT', { minimumFractionDigits: 2 })} ${c.currency}` : ''}</p>
                   </div>
                 );
