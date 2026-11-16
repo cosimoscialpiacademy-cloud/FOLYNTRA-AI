@@ -77,3 +77,14 @@ Le route server sono di solo calcolo: i dati restano nell'archivio dell'utente. 
 ## Licenze
 
 Font EB Garamond, Playfair Display, Inter e Oswald: SIL Open Font License 1.1 (pacchetti `@fontsource`). Le copertine sono grafica vettoriale generata dal codice, senza immagini di terzi.
+
+## Pubblicazione su Railway (preparata, NON ancora provata)
+
+File: `Dockerfile` (Node 22 + Chromium), `railway.json` (healthcheck `/api/status`), `.dockerignore`.
+Non verificato: l'ambiente di sviluppo non ha un motore Docker, quindi la build dell'immagine non è stata eseguita.
+
+1. Crea un account su railway.com e un progetto «Deploy from GitHub repo» con questo repository (branch indicato).
+2. Variabili d'ambiente (mai nel repository): al primo test nessuna; l'app parte in modalità DEMO con AI mock.
+   Per l'AI reale servono `ANTHROPIC_API_KEY`, `ENABLE_EXTERNAL_PAID_APIS=true` e un login (Supabase) oppure `ALLOW_UNAUTHENTICATED_AI=true` solo su un link privato.
+3. In Settings → Networking → «Generate Domain»: è l'indirizzo da aprire dal telefono.
+4. Costi: Railway è a consumo (indicativamente pochi dollari al mese): controlla il piano sul loro sito.
